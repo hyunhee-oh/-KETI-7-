@@ -31,8 +31,10 @@ router.get('/map', async (req, res) => {
       capsByTech[cap.tech_id].push({
         id:    cap.id,
         title: cap.title,
-        // HTTP 서빙 기준 절대경로 (Express static /Image)
-        image: cap.image_path ? '/' + cap.image_path : null
+        // Cloudinary URL은 그대로, 로컬 파일 경로는 /Image/... 형태로 변환
+        image: cap.image_path
+          ? (cap.image_path.startsWith('http') ? cap.image_path : '/' + cap.image_path)
+          : null
       });
     }
 

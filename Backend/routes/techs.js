@@ -19,9 +19,11 @@ const { logAudit } = require('./audit');
  */
 function resolveImagePath(image) {
   if (!image) return null;
-  if (image.startsWith('data:')) return null;          // base64 미업로드 → 무시
-  if (image.startsWith('/'))    return image.slice(1); // /Image/... → Image/...
-  if (image.startsWith('../'))  return image.slice(3); // ../Image/... → Image/...
+  if (image.startsWith('data:')) return null;            // base64 미업로드 → 무시
+  if (image.startsWith('https://')) return image;        // Cloudinary URL → 그대로 저장
+  if (image.startsWith('http://'))  return image;        // 일반 URL → 그대로 저장
+  if (image.startsWith('/'))    return image.slice(1);   // /Image/... → Image/...
+  if (image.startsWith('../'))  return image.slice(3);   // ../Image/... → Image/...
   return image;
 }
 
