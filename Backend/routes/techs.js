@@ -8,7 +8,20 @@ const express = require('express');
 const router  = express.Router();
 const pool    = require('../db');
 const { logAudit } = require('./audit');
-const { optionalAuth } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
+
+async function logAdminChange(userId, targetType, targetId, action, beforeData, afterData) {
+  if (!userId) return;
+  try {
+    await pool.query(
+      `INSERT INTO pending_changes (requester_id, target_type, target_id, action, before_data, after_data, status, reviewer_id, reviewed_at)
+       VALUES ($1,$2,$3,$4,$5,$6,'approved',$1,NOW())`,
+      [userId, targetType, targetId, action,
+       beforeData ? JSON.stringify(beforeData) : null,
+       afterData ? JSON.stringify(afterData) : null]
+    );
+  } catch(e) { console.warn('Admin 변경 이력 기록 실패:', e.message); }
+}
 
 /**
  * 이미지 경로 정규화
@@ -40,7 +53,7 @@ router.get('/techs/:id', async (req, res) => {
 });
 
 // ── 유망기술 추가 ───────────────────────────────────────────
-router.post('/techs', optionalAuth, async (req, res) => {
+router.post('/techs', requireAuth, async (req, res) => {
   // Manager → pending_changes로 분기
   if (req.user && req.user.role === 'manager') {
     try {
@@ -86,7 +99,8 @@ async function _createTech(req, res) {
     }
 
     await client.query('COMMIT');
-    await logAudit('admin', 'CREATE', 'tech', id, null, techRes.rows[0]);
+    await logAudit(req.user?.name || 'admin', 'CREATE', 'tech', id, null, techRes.rows[0]);
+    await logAdminChange(req.user?.id, 'tech', id, 'CREATE', null, techRes.rows[0]);
     res.status(201).json({ ...techRes.rows[0], caps: capsResult });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -98,7 +112,7 @@ async function _createTech(req, res) {
 }
 
 // ── 유망기술 수정 ───────────────────────────────────────────
-router.put('/techs/:id', optionalAuth, async (req, res) => {
+router.put('/techs/:id', requireAuth, async (req, res) => {
   if (req.user && req.user.role === 'manager') {
     try {
       const before = await pool.query('SELECT * FROM techs WHERE id=$1', [req.params.id]);
@@ -149,7 +163,8 @@ async function _updateTech(req, res) {
     }
 
     await client.query('COMMIT');
-    await logAudit('admin', 'UPDATE', 'tech', id, before.rows[0], techRes.rows[0]);
+    await logAudit(req.user?.name || 'admin', 'UPDATE', 'tech', id, before.rows[0], techRes.rows[0]);
+    await logAdminChange(req.user?.id, 'tech', id, 'UPDATE', before.rows[0], techRes.rows[0]);
     res.json(techRes.rows[0]);
   } catch (err) {
     await client.query('ROLLBACK');
@@ -161,7 +176,7 @@ async function _updateTech(req, res) {
 }
 
 // ── 유망기술 삭제 ───────────────────────────────────────────
-router.delete('/techs/:id', optionalAuth, async (req, res) => {
+router.delete('/techs/:id', requireAuth, async (req, res) => {
   if (req.user && req.user.role === 'manager') {
     try {
       const before = await pool.query('SELECT * FROM techs WHERE id=$1', [req.params.id]);
@@ -186,7 +201,8 @@ async function _deleteTech(req, res) {
 
     // ON DELETE CASCADE로 caps도 자동 삭제됨
     await pool.query('DELETE FROM techs WHERE id=$1', [id]);
-    await logAudit('admin', 'DELETE', 'tech', id, before.rows[0], null);
+    await logAudit(req.user?.name || 'admin', 'DELETE', 'tech', id, before.rows[0], null);
+    await logAdminChange(req.user?.id, 'tech', id, 'DELETE', before.rows[0], null);
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/techs/:id 오류:', err);

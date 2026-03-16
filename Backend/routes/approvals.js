@@ -22,16 +22,16 @@ router.get('/approvals', requireAuth, async (req, res) => {
 
     let query, params;
     if (req.user.role === 'admin') {
-      query = `SELECT pc.*, u.name as requester_name
+      query = `SELECT pc.*, COALESCE(u.name, '(알 수 없음)') as requester_name
                FROM pending_changes pc
-               JOIN users u ON u.id = pc.requester_id
+               LEFT JOIN users u ON u.id = pc.requester_id
                WHERE pc.status = $1
                ORDER BY pc.created_at DESC LIMIT $2`;
       params = [status, limit];
     } else {
-      query = `SELECT pc.*, u.name as requester_name
+      query = `SELECT pc.*, COALESCE(u.name, '(알 수 없음)') as requester_name
                FROM pending_changes pc
-               JOIN users u ON u.id = pc.requester_id
+               LEFT JOIN users u ON u.id = pc.requester_id
                WHERE pc.status = $1 AND pc.requester_id = $2
                ORDER BY pc.created_at DESC LIMIT $3`;
       params = [status, req.user.id, limit];
@@ -116,6 +116,22 @@ router.post('/approvals/:id/approve', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/approvals/:id/cancel — 요청자가 본인의 pending 변경 취소
+router.post('/approvals/:id/cancel', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `UPDATE pending_changes SET status='rejected', review_comment='요청자 취소', reviewed_at=NOW()
+       WHERE id=$1 AND status='pending' AND requester_id=$2 RETURNING *`,
+      [id, req.user.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: '취소할 변경사항 없음' });
+    res.json({ ok: true, status: 'cancelled' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/approvals/:id/reject — 반려 (Admin 전용)
 router.post('/approvals/:id/reject', requireAdmin, async (req, res) => {
   const { id } = req.params;
@@ -128,6 +144,22 @@ router.post('/approvals/:id/reject', requireAdmin, async (req, res) => {
     );
     if (!result.rows.length) return res.status(404).json({ error: '처리할 변경사항 없음' });
     res.json({ ok: true, status: 'rejected' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/approvals/:id/undo — Admin이 승인된 이력을 취소 표기 (데이터는 유지)
+router.post('/approvals/:id/undo', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `UPDATE pending_changes SET status='rejected', review_comment='관리자 이력 취소', reviewed_at=NOW()
+       WHERE id=$1 AND status='approved' RETURNING *`,
+      [id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: '취소할 이력이 없습니다' });
+    res.json({ ok: true, status: 'cancelled' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
