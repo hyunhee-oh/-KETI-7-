@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KETI 7대 전략기술 역량 대시보드</title>
+<style>
+  :root {
+    --keti-blue: #003087;
+    --keti-blue-mid: #004db3;
+    --keti-cyan: #00C8C8;
+    --keti-cyan-light: #e0f9f9;
+    --keti-accent: #7B2FBE;
+    --keti-green: #00A86B;
+    --sidebar-width: 220px;
+    --header-height: 64px;
+    --gray-100: #f5f6fa;
+    --gray-200: #e9ecef;
+    --gray-400: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-800: #343a40;
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: var(--gray-100); color: var(--gray-800); }
+
+  /* ─── HEADER ─── */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--header-height);
+    background: var(--keti-blue); color: white; display: flex; align-items: center;
+    padding: 0 20px; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    gap: 16px;
+  }
+  .header-logo { display: flex; align-items: center; gap: 10px; }
+  .logo-badge {
+    background: white; color: var(--keti-blue); font-weight: 900;
+    font-size: 14px; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px;
+  }
+  .header-title { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; flex: 1; }
+  .header-title span { color: var(--keti-cyan); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .btn-edit-mode {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
+    color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px;
+    cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+  }
+  .btn-edit-mode:hover { background: rgba(255,255,255,0.22); }
+  .btn-edit-mode.active { background: var(--keti-cyan); border-color: var(--keti-cyan); color: var(--keti-blue); font-weight: 700; }
+  .btn-pdf {
+    background: linear-gradient(135deg, #E53935, #C62828); border: none;
+    color: white; padding: 7px 16px; border-radius: 20px; font-size: 12px;
+    cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;
+    box-shadow: 0 2px 8px rgba(229,57,53,0.35); transition: all 0.2s;
+  }
+  .btn-pdf:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(229,57,53,0.45); }
+  .user-chip {
+    background: rgba(255,255,255,0.15); border-radius: 20px;
+    padding: 5px 12px; font-size: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .user-dot { width: 8px; height: 8px; background: #4CAF50; border-radius: 50%; }
+  .version-tag { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    position: fixed; top: var(--header-height); left: 0; bottom: 0;
+    width: var(--sidebar-width); background: white; border-right: 1px solid var(--gray-200);
+    overflow-y: auto; z-index: 90; padding-bottom: 20px;
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 700; color: var(--gray-400);
+    letter-spacing: 1.5px; padding: 16px 16px 6px; text-transform: uppercase;
+  }
+  .tech-nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    cursor: pointer; border-radius: 0; transition: all 0.15s; position: relative;
+    font-size: 13px; color: var(--gray-600); font-weight: 500;
+  }
+  .tech-nav-item:hover { background: var(--gray-100); color: var(--keti-blue); }
+  .tech-nav-item.active {
+    background: #E8F0FE; color: var(--keti-blue); font-weight: 700;
+    border-right: 3px solid var(--keti-blue);
+  }
+  .tech-nav-item.active .tech-icon { background: var(--keti-blue); }
+  .tech-icon {
+    width: 30px; height: 30px; border-radius: 8px; background: var(--gray-200);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+    flex-shrink: 0; transition: background 0.15s;
+  }
+  .tech-badge {
+    margin-left: auto; background: var(--gray-200); color: var(--gray-600);
+    font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 600;
+  }
+  .tech-nav-item.active .tech-badge { background: var(--keti-blue); color: white; }
+  .sidebar-divider { height: 1px; background: var(--gray-200); margin: 8px 0; }
+  .sidebar-bottom {
+    padding: 12px 16px; border-top: 1px solid var(--gray-200); margin-top: 8px;
+    font-size: 11px; color: var(--gray-400);
+  }
+  .sidebar-bottom p { margin-bottom: 4px; }
+
+  /* ─── MAIN CONTENT ─── */
+  .main {
+    margin-left: var(--sidebar-width); margin-top: var(--header-height);
+    padding: 24px; min-height: calc(100vh - var(--header-height));
+  }
+
+  /* ─── PAGE HEADER ─── */
+  .page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .page-title-area { flex: 1; }
+  .page-breadcrumb { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
+  .page-title { font-size: 22px; font-weight: 800; color: var(--keti-blue); display: flex; align-items: center; gap: 10px; }
+  .page-title-badge {
+    background: linear-gradient(135deg, var(--keti-blue), var(--keti-blue-mid));
+    color: white; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+  }
+  .page-meta { font-size: 11px; color: var(--gray-400); margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+  .update-dot { width: 6px; height: 6px; background: #4CAF50; border-radius: 50%; display: inline-block; }
+  .page-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn-action {
+    padding: 7px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
+    border: 1px solid var(--gray-200); background: white; color: var(--gray-600);
+    display: flex; align-items: center; gap: 6px; transition: all 0.15s; font-weight: 500;
+  }
+  .btn-action:hover { border-color: var(--keti-blue); color: var(--keti-blue); background: #E8F0FE; }
+  .btn-action.primary { background: var(--keti-blue); color: white; border-color: var(--keti-blue); }
+  .btn-action.primary:hover { background: var(--keti-blue-mid); }
+
+  /* ─── SUB NAV TABS ─── */
+  .sub-tabs {
+    display: flex; gap: 0; background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow-sm); margin-bottom: 22px; overflow: hidden;
+    border: 1px solid var(--gray-200);
+  }
+  .sub-tab {
+    padding: 12px 20px; font-size: 13px; cursor: pointer; font-weight: 500;
+    color: var(--gray-600); transition: all 0.15s; border-right: 1px solid var(--gray-200);
+    display: flex; align-items: center; gap: 7px; flex: 1; justify-content: center;
+  }
+  .sub-tab:last-child { border-right: none; }
+  .sub-tab:hover { background: var(--gray-100); color: var(--keti-blue); }
+  .sub-tab.active { background: var(--keti-blue); color: white; font-weight: 700; }
+  .sub-tab-count {
+    background: rgba(255,255,255,0.25); font-size: 10px;
+    padding: 1px 6px; border-radius: 10px; font-weight: 700;
+  }
+  .sub-tab:not(.active) .sub-tab-count { background: var(--gray-200); color: var(--gray-600); }
+
+  /* ─── SUMMARY STATS ─── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat-card {
+    background: white; border-radius: var(--radius); padding: 18px 20px;
+    box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .stat-card.blue::before { background: var(--keti-blue); }
+  .stat-card.cyan::before { background: var(--keti-cyan); }
+  .stat-card.purple::before { background: var(--keti-accent); }
+  .stat-card.green::before { background: var(--keti-green); }
+  .stat-label { font-size: 11px; color: var(--gray-400); font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 28px; font-weight: 800; color: var(--gray-800); line-height: 1; }
+  .stat-value span { font-size: 14px; font-weight: 500; color: var(--gray-400); margin-left: 2px; }
+  .stat-change { font-size: 11px; margin-top: 6px; color: var(--keti-green); font-weight: 600; }
+  .stat-icon { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: 0.15; }
+
+  /* ─── SECTION BLOCKS ─── */
+  .section-block {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200); margin-bottom: 20px; overflow: hidden;
+  }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--gray-200); background: var(--gray-100);
+  }
+  .section-title {
+    font-size: 14px; font-weight: 700; color: var(--keti-blue);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title-badge {
+    background: var(--keti-blue); color: white;
+    font-size: 10px; padding: 2px 8px; border-radius: 4px;
+  }
+  .section-header-actions { display: flex; gap: 8px; }
+  .btn-small {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
+    border: 1px solid var(--gray-200); background: white; color: var(--gray-600);
+    display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+  }
+  .btn-small:hover { border-color: var(--keti-blue); color: var(--keti-blue); }
+  .btn-small.edit { background: #FFF9C4; border-color: #F9A825; color: #F57F17; }
+  .section-body { padding: 20px; }
+
+  /* ─── CAPABILITY MAP OVERVIEW (인력현황) ─── */
+  .capability-map-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .cap-group {
+    border-radius: 8px; padding: 14px; border: 1px solid;
+  }
+  .cap-group.core { background: #F3E5F5; border-color: #CE93D8; }
+  .cap-group.base { background: #E8F5E9; border-color: #A5D6A7; }
+  .cap-group.fusion { background: #E3F2FD; border-color: #90CAF9; }
+  .cap-group-title {
+    font-size: 12px; font-weight: 800; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cap-group.core .cap-group-title { color: #6A1B9A; }
+  .cap-group.base .cap-group-title { color: #1B5E20; }
+  .cap-group.fusion .cap-group-title { color: #0D47A1; }
+  .cap-group-total {
+    font-size: 18px; font-weight: 800;
+  }
+  .cap-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; background: rgba(255,255,255,0.7); border-radius: 6px;
+    margin-bottom: 4px; cursor: pointer; transition: all 0.15s;
+  }
+  .cap-item:hover { background: white; box-shadow: var(--shadow-sm); }
+  .cap-item-name { font-size: 12px; font-weight: 600; }
+  .cap-item-count {
+    font-size: 12px; font-weight: 700; padding: 2px 8px;
+    border-radius: 10px; background: white;
+  }
+  .cap-group.core .cap-item-count { color: #7B2FBE; }
+  .cap-group.base .cap-item-count { color: #2E7D32; }
+  .cap-group.fusion .cap-item-count { color: #1565C0; }
+  .cap-item-edit { font-size: 10px; color: var(--gray-400); opacity: 0; transition: opacity 0.15s; }
+  .cap-item:hover .cap-item-edit { opacity: 1; }
+
+  /* ─── 담당자 정보 ─── */
+  .responsible-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .responsible-card {
+    background: var(--gray-100); border-radius: 8px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px; flex: 1; min-width: 160px;
+    border: 1px solid var(--gray-200);
+  }
+  .responsible-avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--keti-blue);
+    display: flex; align-items: center; justify-content: center; color: white;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .responsible-info { flex: 1; }
+  .responsible-name { font-size: 13px; font-weight: 700; }
+  .responsible-role { font-size: 10px; color: var(--gray-400); margin-top: 2px; }
+  .responsible-tag {
+    font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600;
+    background: var(--keti-blue); color: white;
+  }
+
+  /* ─── TECHNOLOGY TREND CARD ─── */
+  .filter-bar {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;
+  }
+  .filter-label { font-size: 12px; color: var(--gray-600); font-weight: 600; }
+  .filter-chip {
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer;
+    border: 1px solid var(--gray-200); background: white; color: var(--gray-600);
+    transition: all 0.15s; font-weight: 500;
+  }
+  .filter-chip:hover { border-color: var(--keti-blue); color: var(--keti-blue); }
+  .filter-chip.active { background: var(--keti-blue); color: white; border-color: var(--keti-blue); }
+  .search-box {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+    background: white; border: 1px solid var(--gray-200); border-radius: 20px;
+    padding: 5px 12px;
+  }
+  .search-box input {
+    border: none; outline: none; font-size: 12px; width: 160px; background: transparent;
+  }
+
+  .trend-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .trend-card {
+    background: white; border: 1px solid var(--gray-200); border-radius: var(--radius);
+    overflow: hidden; box-shadow: var(--shadow-sm); transition: all 0.2s;
+  }
+  .trend-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .trend-card-header {
+    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--gray-200);
+    background: linear-gradient(135deg, #E8F0FE, #F0F4FF);
+  }
+  .trend-card-title { font-size: 14px; font-weight: 800; color: var(--keti-blue); }
+  .trend-category-chip {
+    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 700;
+    background: var(--keti-blue); color: white;
+  }
+  .trend-card-body { padding: 14px 16px; }
+  .as-is-to-be {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 12px;
+    background: var(--gray-100); border-radius: 8px;
+  }
+  .as-is-box, .to-be-box { flex: 1; }
+  .as-is-label {
+    font-size: 9px; font-weight: 700; color: var(--gray-400); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .to-be-label {
+    font-size: 9px; font-weight: 700; color: var(--keti-cyan); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .as-is-content { font-size: 12px; color: var(--gray-600); font-weight: 600; }
+  .to-be-content { font-size: 12px; color: var(--keti-blue); font-weight: 700; }
+  .arrow-box {
+    width: 28px; height: 28px; background: var(--keti-blue); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; color: white;
+    font-size: 12px; flex-shrink: 0;
+  }
+  .capability-items { margin-bottom: 10px; }
+  .capability-label { font-size: 10px; font-weight: 700; color: var(--keti-cyan); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+  .capability-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .cap-chip {
+    font-size: 10px; padding: 3px 8px; border-radius: 4px; background: var(--keti-cyan-light);
+    color: #006666; font-weight: 600; border: 1px solid rgba(0,200,200,0.25);
+  }
+  .trend-card-footer {
+    padding: 8px 16px; border-top: 1px solid var(--gray-200); background: var(--gray-100);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .footer-center-label { font-size: 10px; color: var(--gray-400); }
+  .footer-center-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+  .center-chip {
+    font-size: 9px; padding: 2px 6px; border-radius: 3px; background: #E8F0FE;
+    color: var(--keti-blue); font-weight: 600;
+  }
+  .footer-right { display: flex; align-items: center; gap: 8px; }
+  .person-chip {
+    font-size: 10px; color: var(--gray-600); display: flex; align-items: center; gap: 4px;
+    background: white; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--gray-200);
+  }
+  .edit-overlay-btn {
+    opacity: 0; transition: opacity 0.15s;
+    background: #F9A825; border: none; color: white; font-size: 10px;
+    padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: 600;
+  }
+  .trend-card:hover .edit-overlay-btn { opacity: 1; }
+
+  /* ─── EDIT MODE INDICATOR ─── */
+  .edit-mode-banner {
+    display: none; background: #FFF9C4; border: 1px solid #F9A825; border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 16px; font-size: 12px; color: #E65100;
+    font-weight: 600; align-items: center; gap: 8px;
+  }
+  .edit-mode-banner.show { display: flex; }
+
+  /* ─── PDF PREVIEW MODAL ─── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--keti-blue); }
+  .modal-body { margin-bottom: 20px; }
+  .pdf-option-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .pdf-option {
+    border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px;
+    cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .pdf-option:hover { border-color: var(--keti-blue); background: #E8F0FE; }
+  .pdf-option.selected { border-color: var(--keti-blue); background: #E8F0FE; }
+  .pdf-option-icon { font-size: 24px; margin-bottom: 6px; }
+  .pdf-option-label { font-size: 12px; font-weight: 600; color: var(--gray-800); }
+  .pdf-option-desc { font-size: 10px; color: var(--gray-400); margin-top: 2px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-modal { padding: 8px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 600; }
+  .btn-modal.cancel { border: 1px solid var(--gray-200); background: white; color: var(--gray-600); }
+  .btn-modal.confirm { background: var(--keti-blue); border: none; color: white; }
+
+  /* ─── ANNOTATION / COMMENT ─── */
+  .comment-bubble {
+    position: absolute; right: -10px; top: -10px; width: 22px; height: 22px;
+    background: #FF6B35; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; color: white; font-size: 10px; font-weight: 700;
+    box-shadow: 0 2px 6px rgba(255,107,53,0.4); cursor: pointer;
+  }
+
+  /* ─── PROGRESS INDICATOR ─── */
+  .progress-bar-wrap { background: var(--gray-200); border-radius: 4px; height: 6px; flex: 1; }
+  .progress-bar { height: 100%; border-radius: 4px; background: var(--keti-cyan); }
+
+  /* ─── NOTIFICATION DOT ─── */
+  .notif-dot {
+    width: 7px; height: 7px; background: #FF6B35; border-radius: 50%;
+    position: absolute; right: 12px; top: 12px;
+  }
+
+  /* ─── TIMELINE ─── */
+  .update-timeline { padding: 0; }
+  .timeline-item { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
+  .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--keti-cyan); flex-shrink: 0; margin-top: 4px; }
+  .timeline-content { flex: 1; }
+  .timeline-meta { font-size: 10px; color: var(--gray-400); }
+  .timeline-text { font-size: 12px; margin-top: 2px; }
+
+  /* ─── TOOLTIP ─── */
+  .tooltip {
+    position: relative; display: inline-block; cursor: help;
+  }
+  .tooltip:hover::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%); background: var(--gray-800); color: white;
+    font-size: 10px; padding: 4px 8px; border-radius: 4px; white-space: nowrap; z-index: 999;
+  }
+
+  /* ── IMAGE CAROUSEL ── */
+  .cap-carousel { border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; margin-top: 4px; background: #f8f9fb; }
+  .cap-carousel-view { position: relative; height: 150px; background: #f0f4ff; overflow: hidden; }
+  .cap-slide { display: none; width: 100%; height: 100%; position: relative; }
+  .cap-slide.active { display: block; }
+  .cap-slide img { width: 100%; height: 150px; object-fit: contain; display: block; background: #f0f4ff; }
+  .cap-carousel-caption {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,30,87,0.78));
+    color: white; font-size: 10px; font-weight: 600;
+    padding: 20px 10px 6px; text-align: center;
+  }
+  .cap-carousel-ctrl {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 10px; background: white; border-top: 1px solid var(--gray-200);
+  }
+  .cap-nav-btn {
+    background: none; border: 1px solid var(--gray-200); border-radius: 4px;
+    width: 22px; height: 22px; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; font-size: 14px; color: var(--keti-blue);
+    transition: all 0.15s; line-height: 1;
+  }
+  .cap-nav-btn:hover { background: var(--keti-blue); color: white; border-color: var(--keti-blue); }
+  .cap-carousel-dots { display: flex; gap: 5px; align-items: center; }
+  .c-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gray-200); cursor: pointer; transition: background 0.2s;
+  }
+  .c-dot.active { background: var(--keti-blue); }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 1100px) {
+    .trend-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .capability-map-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-badge">KETI</div>
+    <div style="font-size:10px;opacity:0.6;line-height:1.3">한국전자기술연구원<br>Korea Electronics Technology Institute</div>
+  </div>
+  <div class="header-title">7대 전략기술 <span>유망기술 트렌드 &amp; 보유역량</span> 대시보드</div>
+  <div class="header-right">
+    <span class="version-tag">v2.0 · 2025.12</span>
+    <div class="user-chip"><div class="user-dot"></div>이현희 (기획조정실)</div>
+    <button class="btn-edit-mode" id="editModeBtn" onclick="toggleEditMode()">✏️ 편집 모드</button>
+    <button class="btn-pdf" onclick="showPdfModal()">📄 PDF 다운로드</button>
+  </div>
+</header>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-section-label">전략기술 영역</div>
+
+  <div class="tech-nav-item active" onclick="selectTech(this, 'AI')">
+    <div class="tech-icon">🤖</div>
+    AI
+    <span class="tech-badge">v2.0</span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '국방')">
+    <div class="tech-icon">🛡️</div>
+    국방
+    <span class="tech-badge">v2.0</span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '로봇')">
+    <div class="tech-icon">🦾</div>
+    로봇
+    <span class="tech-badge">v2.0</span>
+    <span class="notif-dot" style="position:static;width:7px;height:7px;border-radius:50%;background:#FF6B35;margin-left:2px"></span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '모빌리티')">
+    <div class="tech-icon">🚗</div>
+    모빌리티
+    <span class="tech-badge">v2.0</span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '반도체')">
+    <div class="tech-icon">💻</div>
+    반도체
+    <span class="tech-badge">v2.0</span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '안전·보안')">
+    <div class="tech-icon">🔒</div>
+    안전·보안
+    <span class="tech-badge">v2.0</span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '양자')">
+    <div class="tech-icon">⚛️</div>
+    양자
+    <span class="tech-badge">v2.0</span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '에너지')">
+    <div class="tech-icon">⚡</div>
+    에너지
+    <span class="tech-badge">v2.0</span>
+  </div>
+  <div class="tech-nav-item" onclick="selectTech(this, '우주')">
+    <div class="tech-icon">🚀</div>
+    우주
+    <span class="tech-badge">v2.0</span>
+  </div>
+
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section-label">관리</div>
+  <div class="tech-nav-item" onclick="alert('연구부서 현황 페이지')">
+    <div class="tech-icon" style="background:#E8F0FE">📊</div>
+    <span style="color:var(--gray-800)">전체 현황 요약</span>
+  </div>
+  <div class="tech-nav-item" onclick="alert('변경이력 페이지')">
+    <div class="tech-icon" style="background:#E8F0FE">📋</div>
+    <span style="color:var(--gray-800)">변경 이력 관리</span>
+  </div>
+  <div class="tech-nav-item" onclick="alert('담당자 권한 관리')">
+    <div class="tech-icon" style="background:#E8F0FE">👤</div>
+    <span style="color:var(--gray-800)">담당자 권한 설정</span>
+  </div>
+
+  <div class="sidebar-bottom">
+    <p>📅 마지막 동기화: 2025.12.10</p>
+    <p>🔄 전체 섹션 동기화</p>
+  </div>
+</nav>
+
+<!-- ══════════════════ MAIN CONTENT ══════════════════ -->
+<main class="main">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="page-title-area">
+      <div class="page-breadcrumb">전략기술 역량 대시보드 &rsaquo; AI</div>
+      <div class="page-title">
+        🤖 AI 유망기술 트렌드 및 KETI 보유역량
+        <span class="page-title-badge">v2.0</span>
+      </div>
+      <div class="page-meta">
+        <span class="update-dot"></span>
+        최종 업데이트: 2025.12.10 &nbsp;·&nbsp; 담당 총괄: 임태범 &nbsp;·&nbsp; 연구분야: 4개 카테고리 / 13개 세부기술
+      </div>
+    </div>
+    <div class="page-actions">
+      <button class="btn-action" onclick="alert('공유 링크 복사')">🔗 링크 공유</button>
+      <button class="btn-action" onclick="alert('비교 보기')">⚖️ 버전 비교</button>
+      <button class="btn-action primary" onclick="alert('변경사항 저장')">💾 저장</button>
+    </div>
+  </div>
+
+  <!-- EDIT MODE BANNER -->
+  <div class="edit-mode-banner" id="editBanner">
+    ✏️ <strong>편집 모드 활성화</strong> — 각 카드의 [편집] 버튼을 눌러 내용을 수정할 수 있습니다. 저장 전까지 변경사항은 임시 저장됩니다.
+    <span style="margin-left:auto;cursor:pointer;opacity:0.6" onclick="toggleEditMode()">✕ 닫기</span>
+  </div>
+
+  <!-- SUB TABS -->
+  <div class="sub-tabs">
+    <div class="sub-tab active" onclick="switchTab(this, 'tab-overview')">
+      📊 기술·인력 현황
+      <span class="sub-tab-count">1</span>
+    </div>
+    <div class="sub-tab" onclick="switchTab(this, 'tab-core')">
+      🧠 핵심기술 트렌드
+      <span class="sub-tab-count">5</span>
+    </div>
+    <div class="sub-tab" onclick="switchTab(this, 'tab-base')">
+      ⚙️ 기반기술 트렌드
+      <span class="sub-tab-count">5</span>
+    </div>
+    <div class="sub-tab" onclick="switchTab(this, 'tab-fusion')">
+      🔀 융합기술 트렌드
+      <span class="sub-tab-count">12</span>
+    </div>
+  </div>
+
+  <!-- ══════ TAB 1: 기술·인력 현황 ══════ -->
+  <div id="tab-overview">
+
+    <!-- 요약 통계 -->
+    <div class="stats-row">
+      <div class="stat-card blue">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">총 AI 연구인력</div>
+        <div class="stat-value">743<span>명</span></div>
+        <div class="stat-change">▲ 12.3% (전년 대비)</div>
+      </div>
+      <div class="stat-card cyan">
+        <div class="stat-icon">🔬</div>
+        <div class="stat-label">연구 세부기술</div>
+        <div class="stat-value">13<span>개</span></div>
+        <div class="stat-change" style="color:var(--gray-400)">핵심5 · 기반5 · 융합12</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-icon">🏛️</div>
+        <div class="stat-label">참여 연구센터</div>
+        <div class="stat-value">21<span>개</span></div>
+        <div class="stat-change">▲ 2개 신규 참여</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">📝</div>
+        <div class="stat-label">최근 업데이트</div>
+        <div class="stat-value">5<span>건</span></div>
+        <div class="stat-change" style="color:var(--gray-400)">이번 달 수정</div>
+      </div>
+    </div>
+
+    <!-- 보유역량 맵 -->
+    <div class="section-block">
+      <div class="section-header">
+        <div class="section-title">
+          🗺️ KETI AI 기술·인력 역량 맵
+          <span class="section-title-badge">총괄: 임태범</span>
+        </div>
+        <div class="section-header-actions">
+          <button class="btn-small edit" id="editCapBtn" onclick="toggleInlineEdit()">✏️ 편집</button>
+          <button class="btn-small" onclick="alert('전체화면 보기')">⛶ 전체화면</button>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="capability-map-grid">
+
+          <!-- AI 핵심기술 -->
+          <div class="cap-group core">
+            <div class="cap-group-title">
+              🧠 AI 핵심기술
+              <span class="cap-group-total" style="color:#6A1B9A">208명</span>
+            </div>
+            <div class="cap-item" onclick="alert('학습지능 상세보기')">
+              <span class="cap-item-name">학습지능</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:72%;background:#9C27B0"></div></div>
+                <span class="cap-item-count">53명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item" onclick="alert('단일지능 상세보기')">
+              <span class="cap-item-name">단일지능</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:58%;background:#9C27B0"></div></div>
+                <span class="cap-item-count">45명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item" onclick="alert('복합지능 상세보기')">
+              <span class="cap-item-name">복합지능</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:72%;background:#9C27B0"></div></div>
+                <span class="cap-item-count">56명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item" onclick="alert('엣지AI 상세보기')">
+              <span class="cap-item-name">엣지 AI</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:45%;background:#9C27B0"></div></div>
+                <span class="cap-item-count">35명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item" onclick="alert('AI 윤리·안전 상세보기')">
+              <span class="cap-item-name">AI 윤리·안전</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:24%;background:#9C27B0"></div></div>
+                <span class="cap-item-count">19명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI 기반기술 -->
+          <div class="cap-group base">
+            <div class="cap-group-title">
+              ⚙️ AI 기반기술
+              <span class="cap-group-total" style="color:#1B5E20">213명</span>
+            </div>
+            <div class="cap-item">
+              <span class="cap-item-name">AI 반도체</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:62%;background:#4CAF50"></div></div>
+                <span class="cap-item-count">48명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item">
+              <span class="cap-item-name">AI 센서</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:67%;background:#4CAF50"></div></div>
+                <span class="cap-item-count">52명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item">
+              <span class="cap-item-name">데이터</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:57%;background:#4CAF50"></div></div>
+                <span class="cap-item-count">44명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item">
+              <span class="cap-item-name">클라우드</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:43%;background:#4CAF50"></div></div>
+                <span class="cap-item-count">33명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+            <div class="cap-item">
+              <span class="cap-item-name">디지털트윈</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar-wrap" style="width:60px"><div class="progress-bar" style="width:46%;background:#4CAF50"></div></div>
+                <span class="cap-item-count">36명</span>
+                <span class="cap-item-edit">편집 ›</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI 융합기술 (요약) -->
+          <div class="cap-group fusion">
+            <div class="cap-group-title">
+              🔀 AI 융합기술
+              <span class="cap-group-total" style="color:#0D47A1">415명</span>
+            </div>
+            <div class="cap-item"><span class="cap-item-name">로봇</span><span class="cap-item-count">60명</span></div>
+            <div class="cap-item"><span class="cap-item-name">모빌리티</span><span class="cap-item-count">64명</span></div>
+            <div class="cap-item"><span class="cap-item-name">공공</span><span class="cap-item-count">65명</span></div>
+            <div class="cap-item"><span class="cap-item-name">자율제조</span><span class="cap-item-count">41명</span></div>
+            <div style="margin-top:6px">
+              <button class="btn-small" style="width:100%;justify-content:center" onclick="switchTab(null,'tab-fusion')">
+                + 전체 12개 융합기술 보기 →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 담당자 -->
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-200)">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:8px">👤 총괄 담당자</div>
+          <div class="responsible-row">
+            <div class="responsible-card">
+              <div class="responsible-avatar">임</div>
+              <div class="responsible-info">
+                <div class="responsible-name">임태범 (정)</div>
+                <div class="responsible-role">AI 총괄 담당자 · 반도체본부</div>
+              </div>
+              <span class="responsible-tag">총괄</span>
+            </div>
+            <div class="responsible-card">
+              <div class="responsible-avatar">황</div>
+              <div class="responsible-info">
+                <div class="responsible-name">황태호 (정)</div>
+                <div class="responsible-role">AI 기반기술 담당 · 반도체</div>
+              </div>
+              <span class="responsible-tag" style="background:#2E7D32">기반</span>
+            </div>
+            <div class="responsible-card">
+              <div class="responsible-avatar">고</div>
+              <div class="responsible-info">
+                <div class="responsible-name">고재진 (정)</div>
+                <div class="responsible-role">AI 시스템 담당</div>
+              </div>
+              <span class="responsible-tag" style="background:#1565C0">융합</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 변경이력 -->
+    <div class="section-block">
+      <div class="section-header">
+        <div class="section-title">🕐 최근 변경 이력</div>
+        <button class="btn-small" onclick="alert('전체 이력 보기')">전체 보기 →</button>
+      </div>
+      <div class="section-body">
+        <div class="update-timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot" style="background:#9C27B0"></div>
+            <div class="timeline-content">
+              <div class="timeline-meta">2025.12.10 · 신사임 (정)</div>
+              <div class="timeline-text">복합지능 &gt; 범용 인공지능 섹션 내용 업데이트 (No-code AI 추가)</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot" style="background:#4CAF50"></div>
+            <div class="timeline-content">
+              <div class="timeline-meta">2025.12.08 · 금승우 (부)</div>
+              <div class="timeline-text">엣지 AI 보유역량 이미지 3건 교체</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot" style="background:#1565C0"></div>
+            <div class="timeline-content">
+              <div class="timeline-meta">2025.12.05 · 이영한 (정)</div>
+              <div class="timeline-text">AI 윤리·안전 &gt; 딥페이크 탐지 To-Be 목표 수정</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ TAB 2: 핵심기술 트렌드 ══════ -->
+  <div id="tab-core" style="display:none">
+
+    <!-- 필터 바 -->
+    <div class="filter-bar">
+      <span class="filter-label">카테고리:</span>
+      <span class="filter-chip active">전체</span>
+      <span class="filter-chip" onclick="filterChip(this)">학습지능</span>
+      <span class="filter-chip" onclick="filterChip(this)">단일지능</span>
+      <span class="filter-chip" onclick="filterChip(this)">복합지능</span>
+      <span class="filter-chip" onclick="filterChip(this)">엣지 AI</span>
+      <span class="filter-chip" onclick="filterChip(this)">AI 윤리·안전</span>
+      <div class="search-box">
+        🔍 <input type="text" placeholder="기술명, 연구센터 검색...">
+      </div>
+    </div>
+
+    <!-- 기술 카드 그리드 -->
+    <div class="trend-grid">
+
+      <!-- 카드 1 -->
+      <div class="trend-card" style="position:relative">
+        <div class="comment-bubble" title="댓글 2건">2</div>
+        <div class="trend-card-header">
+          <div class="trend-card-title">머신러닝</div>
+          <span class="trend-category-chip">학습지능</span>
+        </div>
+        <div class="trend-card-body">
+          <div class="as-is-to-be">
+            <div class="as-is-box">
+              <div class="as-is-label">As-Is</div>
+              <div class="as-is-content">객체 인식, 추적, 생성</div>
+            </div>
+            <div class="arrow-box">→</div>
+            <div class="to-be-box">
+              <div class="to-be-label">To-Be</div>
+              <div class="to-be-content">학습되지 않은 개체 인식</div>
+            </div>
+          </div>
+          <div class="capability-items">
+            <div class="capability-label">✅ KETI 보유역량</div>
+            <div class="cap-carousel" data-id="ml">
+              <div class="cap-carousel-view">
+                <div class="cap-slide active">
+                  <img src="../Image/AI/AI 핵심기술/학습데이터 기반 객체인식.png" alt="학습데이터 기반 객체인식">
+                  <div class="cap-carousel-caption">학습데이터 기반 객체인식</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/크로스모달 상호참조.png" alt="크로스모달 상호참조">
+                  <div class="cap-carousel-caption">크로스모달 상호참조</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/웹규모 개체인식.png" alt="웹규모 개체인식">
+                  <div class="cap-carousel-caption">웹규모 개체인식</div>
+                </div>
+              </div>
+              <div class="cap-carousel-ctrl">
+                <button class="cap-nav-btn" onclick="carouselNav('ml',-1)">&#8249;</button>
+                <div class="cap-carousel-dots">
+                  <span class="c-dot active" onclick="carouselGoto('ml',0)"></span>
+                  <span class="c-dot" onclick="carouselGoto('ml',1)"></span>
+                  <span class="c-dot" onclick="carouselGoto('ml',2)"></span>
+                </div>
+                <button class="cap-nav-btn" onclick="carouselNav('ml',1)">&#8250;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="trend-card-footer">
+          <div>
+            <div class="footer-center-label">📍 연구센터</div>
+            <div class="footer-center-chips">
+              <span class="center-chip">AI기반모델</span>
+              <span class="center-chip">정보미디어</span>
+              <span class="center-chip">모빌리티플랫폼</span>
+              <span class="center-chip">콘텐츠응용</span>
+            </div>
+          </div>
+          <div class="footer-right">
+            <div class="person-chip">👤 신사임(정) · 금승우(부)</div>
+            <button class="edit-overlay-btn" onclick="alert('머신러닝 섹션 편집 모드 진입')">✏️ 편집</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 카드 2 -->
+      <div class="trend-card">
+        <div class="trend-card-header">
+          <div class="trend-card-title">생성 AI 모델 연구</div>
+          <span class="trend-category-chip">학습지능</span>
+        </div>
+        <div class="trend-card-body">
+          <div class="as-is-to-be">
+            <div class="as-is-box">
+              <div class="as-is-label">As-Is</div>
+              <div class="as-is-content">확산모델 기반 데이터 편집·생성</div>
+            </div>
+            <div class="arrow-box">→</div>
+            <div class="to-be-box">
+              <div class="to-be-label">To-Be</div>
+              <div class="to-be-content">소량데이터 기반 모델 일반화</div>
+            </div>
+          </div>
+          <div class="capability-items">
+            <div class="capability-label">✅ KETI 보유역량</div>
+            <div class="cap-carousel" data-id="gen">
+              <div class="cap-carousel-view">
+                <div class="cap-slide active">
+                  <img src="../Image/AI/AI 핵심기술/AI 데이터 전처리 플랫폼.png" alt="AI 데이터 전처리 플랫폼">
+                  <div class="cap-carousel-caption">AI 데이터 전처리 플랫폼</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/콘텐츠 개인화.png" alt="콘텐츠 개인화">
+                  <div class="cap-carousel-caption">콘텐츠 개인화</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/Diffusion Model 알고리즘 개선.png" alt="Diffusion Model 알고리즘 개선">
+                  <div class="cap-carousel-caption">Diffusion Model 알고리즘 개선</div>
+                </div>
+              </div>
+              <div class="cap-carousel-ctrl">
+                <button class="cap-nav-btn" onclick="carouselNav('gen',-1)">&#8249;</button>
+                <div class="cap-carousel-dots">
+                  <span class="c-dot active" onclick="carouselGoto('gen',0)"></span>
+                  <span class="c-dot" onclick="carouselGoto('gen',1)"></span>
+                  <span class="c-dot" onclick="carouselGoto('gen',2)"></span>
+                </div>
+                <button class="cap-nav-btn" onclick="carouselNav('gen',1)">&#8250;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="trend-card-footer">
+          <div>
+            <div class="footer-center-label">📍 연구센터</div>
+            <div class="footer-center-chips">
+              <span class="center-chip">AI기반모델</span>
+              <span class="center-chip">IT응용</span>
+              <span class="center-chip">산업데이터융합</span>
+            </div>
+          </div>
+          <div class="footer-right">
+            <div class="person-chip">👤 신사임(정) · 이영한(부)</div>
+            <button class="edit-overlay-btn" onclick="alert('생성AI 모델 연구 편집')">✏️ 편집</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 카드 3 -->
+      <div class="trend-card">
+        <div class="trend-card-header">
+          <div class="trend-card-title">청각지능</div>
+          <span class="trend-category-chip" style="background:#1565C0">단일지능</span>
+        </div>
+        <div class="trend-card-body">
+          <div class="as-is-to-be">
+            <div class="as-is-box">
+              <div class="as-is-label">As-Is</div>
+              <div class="as-is-content">소용량 음성 생성</div>
+            </div>
+            <div class="arrow-box">→</div>
+            <div class="to-be-box">
+              <div class="to-be-label">To-Be</div>
+              <div class="to-be-content">Zero-shot 음성 생성</div>
+            </div>
+          </div>
+          <div class="capability-items">
+            <div class="capability-label">✅ KETI 보유역량</div>
+            <div class="cap-carousel" data-id="audio">
+              <div class="cap-carousel-view">
+                <div class="cap-slide active">
+                  <img src="../Image/AI/AI 핵심기술/고품질 음성 생성.jpg" alt="고품질 음성 생성">
+                  <div class="cap-carousel-caption">고품질 음성 생성</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/다국어 변환.png" alt="다국어 변환">
+                  <div class="cap-carousel-caption">다국어 변환</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/한국어 가창 합성.png" alt="한국어 가창 합성">
+                  <div class="cap-carousel-caption">한국어 가창 합성</div>
+                </div>
+              </div>
+              <div class="cap-carousel-ctrl">
+                <button class="cap-nav-btn" onclick="carouselNav('audio',-1)">&#8249;</button>
+                <div class="cap-carousel-dots">
+                  <span class="c-dot active" onclick="carouselGoto('audio',0)"></span>
+                  <span class="c-dot" onclick="carouselGoto('audio',1)"></span>
+                  <span class="c-dot" onclick="carouselGoto('audio',2)"></span>
+                </div>
+                <button class="cap-nav-btn" onclick="carouselNav('audio',1)">&#8250;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="trend-card-footer">
+          <div>
+            <div class="footer-center-label">📍 연구센터</div>
+            <div class="footer-center-chips">
+              <span class="center-chip">AI기반모델</span>
+              <span class="center-chip">복합지능</span>
+              <span class="center-chip">콘텐츠응용</span>
+            </div>
+          </div>
+          <div class="footer-right">
+            <div class="person-chip">👤 신사임(정) · 이영한(부)</div>
+            <button class="edit-overlay-btn">✏️ 편집</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 카드 4 -->
+      <div class="trend-card">
+        <div class="trend-card-header">
+          <div class="trend-card-title">지능형 에이전트</div>
+          <span class="trend-category-chip" style="background:#388E3C">복합지능</span>
+        </div>
+        <div class="trend-card-body">
+          <div class="as-is-to-be">
+            <div class="as-is-box">
+              <div class="as-is-label">As-Is</div>
+              <div class="as-is-content">정보검색 및 대화 에이전트</div>
+            </div>
+            <div class="arrow-box">→</div>
+            <div class="to-be-box">
+              <div class="to-be-label">To-Be</div>
+              <div class="to-be-content">자율적 지능형 협업 에이전트</div>
+            </div>
+          </div>
+          <div class="capability-items">
+            <div class="capability-label">✅ KETI 보유역량</div>
+            <div class="cap-carousel" data-id="agent">
+              <div class="cap-carousel-view">
+                <div class="cap-slide active">
+                  <img src="../Image/AI/AI 핵심기술/개성(Persona) 에이전트.png" alt="개성(Persona) 에이전트">
+                  <div class="cap-carousel-caption">개성(Persona) 에이전트</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/대화형 에이전트 시스템.png" alt="대화형 에이전트 시스템">
+                  <div class="cap-carousel-caption">대화형 에이전트 시스템</div>
+                </div>
+                <div class="cap-slide">
+                  <img src="../Image/AI/AI 핵심기술/Agentic LLM.png" alt="Agentic LLM">
+                  <div class="cap-carousel-caption">Agentic LLM</div>
+                </div>
+              </div>
+              <div class="cap-carousel-ctrl">
+                <button class="cap-nav-btn" onclick="carouselNav('agent',-1)">&#8249;</button>
+                <div class="cap-carousel-dots">
+                  <span class="c-dot active" onclick="carouselGoto('agent',0)"></span>
+                  <span class="c-dot" onclick="carouselGoto('agent',1)"></span>
+                  <span class="c-dot" onclick="carouselGoto('agent',2)"></span>
+                </div>
+                <button class="cap-nav-btn" onclick="carouselNav('agent',1)">&#8250;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="trend-card-footer">
+          <div>
+            <div class="footer-center-label">📍 연구센터</div>
+            <div class="footer-center-chips">
+              <span class="center-chip">AI기반모델</span>
+              <span class="center-chip">복합지능</span>
+              <span class="center-chip">콘텐츠응용</span>
+            </div>
+          </div>
+          <div class="footer-right">
+            <div class="person-chip">👤 신사임(정) · 금승우(부)</div>
+            <button class="edit-overlay-btn" onclick="alert('지능형 에이전트 섹션 편집')">✏️ 편집</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end trend-grid -->
+
+    <!-- 추가 버튼 -->
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn-action" onclick="alert('새 기술 카드 추가')">
+        ＋ 핵심기술 항목 추가
+      </button>
+    </div>
+
+  </div><!-- end tab-core -->
+
+  <!-- ══════ TAB 3 & 4 placeholder ══════ -->
+  <div id="tab-base" style="display:none">
+    <div style="background:white;border-radius:10px;padding:40px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:40px;margin-bottom:12px">⚙️</div>
+      <div style="font-size:16px;font-weight:700;color:var(--keti-blue);margin-bottom:8px">AI 기반기술 트렌드 섹션</div>
+      <div style="font-size:13px;color:var(--gray-400);margin-bottom:16px">AI 반도체 · AI 센서 · 데이터 · 클라우드 · 디지털트윈 (5개 기술, 담당: 황태호)</div>
+      <button class="btn-action primary" onclick="alert('기반기술 콘텐츠 로드')">콘텐츠 불러오기</button>
+    </div>
+  </div>
+
+  <div id="tab-fusion" style="display:none">
+    <div style="background:white;border-radius:10px;padding:40px;text-align:center;border:1px solid var(--gray-200)">
+      <div style="font-size:40px;margin-bottom:12px">🔀</div>
+      <div style="font-size:16px;font-weight:700;color:var(--keti-blue);margin-bottom:8px">AI 융합기술 트렌드 섹션</div>
+      <div style="font-size:13px;color:var(--gray-400);margin-bottom:16px">로봇 · 모빌리티 · 자율제조 · 통신전파 · 에너지 · 농업해양 · 가전 · 무인이동체 · 콘텐츠 · 공공 · 바이오헬스 · 스마트시티 (12개)</div>
+      <button class="btn-action primary" onclick="alert('융합기술 콘텐츠 로드')">콘텐츠 불러오기</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══════════════════ PDF MODAL ══════════════════ -->
+<div class="modal-overlay" id="pdfModal">
+  <div class="modal-box">
+    <div class="modal-title">📄 PDF 다운로드 옵션</div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--gray-600);margin-bottom:12px">출력 범위와 형식을 선택하세요.</div>
+      <div class="pdf-option-row">
+        <div class="pdf-option selected" onclick="selectPdf(this)">
+          <div class="pdf-option-icon">📑</div>
+          <div class="pdf-option-label">현재 탭만</div>
+          <div class="pdf-option-desc">현재 보고 있는 섹션</div>
+        </div>
+        <div class="pdf-option" onclick="selectPdf(this)">
+          <div class="pdf-option-icon">📚</div>
+          <div class="pdf-option-label">전체 AI 문서</div>
+          <div class="pdf-option-desc">AI 4개 섹션 전체</div>
+        </div>
+        <div class="pdf-option" onclick="selectPdf(this)">
+          <div class="pdf-option-icon">🗂️</div>
+          <div class="pdf-option-label">전략기술 전체</div>
+          <div class="pdf-option-desc">9개 영역 통합본</div>
+        </div>
+        <div class="pdf-option" onclick="selectPdf(this)">
+          <div class="pdf-option-icon">⚙️</div>
+          <div class="pdf-option-label">사용자 지정</div>
+          <div class="pdf-option-desc">섹션 직접 선택</div>
+        </div>
+      </div>
+      <div style="background:var(--gray-100);border-radius:6px;padding:10px;font-size:11px;color:var(--gray-600)">
+        💡 PPT 슬라이드 형식으로도 내보낼 수 있습니다. (별도 기능)
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal cancel" onclick="hidePdfModal()">취소</button>
+      <button class="btn-modal confirm" onclick="alert('PDF 생성 중... 완료 시 다운로드됩니다.');hidePdfModal()">📥 다운로드</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── CAROUSEL NAV (정적 슬라이드 방식) ── */
+  function carouselNav(id, dir) {
+    const el     = document.querySelector('.cap-carousel[data-id="' + id + '"]');
+    if (!el) return;
+    const slides = el.querySelectorAll('.cap-slide');
+    const dots   = el.querySelectorAll('.c-dot');
+    let cur = 0;
+    slides.forEach(function(s, i) { if (s.classList.contains('active')) cur = i; });
+    slides[cur].classList.remove('active');
+    dots[cur].classList.remove('active');
+    cur = (cur + dir + slides.length) % slides.length;
+    slides[cur].classList.add('active');
+    dots[cur].classList.add('active');
+  }
+
+  function carouselGoto(id, idx) {
+    const el     = document.querySelector('.cap-carousel[data-id="' + id + '"]');
+    if (!el) return;
+    const slides = el.querySelectorAll('.cap-slide');
+    const dots   = el.querySelectorAll('.c-dot');
+    slides.forEach(function(s) { s.classList.remove('active'); });
+    dots.forEach(function(d)   { d.classList.remove('active'); });
+    if (slides[idx]) slides[idx].classList.add('active');
+    if (dots[idx])   dots[idx].classList.add('active');
+  }
+
+  function toggleEditMode() {
+    const btn = document.getElementById('editModeBtn');
+    const banner = document.getElementById('editBanner');
+    btn.classList.toggle('active');
+    banner.classList.toggle('show');
+    if (btn.classList.contains('active')) {
+      btn.textContent = '✅ 편집 모드 ON';
+    } else {
+      btn.innerHTML = '✏️ 편집 모드';
+    }
+  }
+
+  function switchTab(el, tabId) {
+    // hide all tabs
+    document.getElementById('tab-overview').style.display = 'none';
+    document.getElementById('tab-core').style.display = 'none';
+    document.getElementById('tab-base').style.display = 'none';
+    document.getElementById('tab-fusion').style.display = 'none';
+    // deactivate all tab buttons
+    document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+    // show selected tab
+    document.getElementById(tabId).style.display = 'block';
+    if (el) el.classList.add('active');
+  }
+
+  function selectTech(el, name) {
+    document.querySelectorAll('.tech-nav-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    const title = document.querySelector('.page-title');
+    const icons = {AI:'🤖',국방:'🛡️',로봇:'🦾',모빌리티:'🚗',반도체:'💻','안전·보안':'🔒',양자:'⚛️',에너지:'⚡',우주:'🚀'};
+    title.innerHTML = `${icons[name]||'🔬'} ${name} 유망기술 트렌드 및 KETI 보유역량 <span class="page-title-badge">v2.0</span>`;
+    document.querySelector('.page-breadcrumb').textContent = `전략기술 역량 대시보드 › ${name}`;
+  }
+
+  function filterChip(el) {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function showPdfModal() { document.getElementById('pdfModal').classList.add('show'); }
+  function hidePdfModal() { document.getElementById('pdfModal').classList.remove('show'); }
+
+  function selectPdf(el) {
+    document.querySelectorAll('.pdf-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function toggleInlineEdit() {
+    const btn = document.getElementById('editCapBtn');
+    if (btn.textContent.includes('편집')) {
+      btn.textContent = '💾 저장';
+      btn.style.background = '#E8F5E9';
+      btn.style.borderColor = '#4CAF50';
+      btn.style.color = '#2E7D32';
+      document.querySelectorAll('.cap-item').forEach(item => {
+        item.style.border = '1px dashed #F9A825';
+      });
+    } else {
+      btn.innerHTML = '✏️ 편집';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      document.querySelectorAll('.cap-item').forEach(item => {
+        item.style.border = '';
+      });
+    }
+  }
+
+  // close modal on overlay click
+  document.getElementById('pdfModal').addEventListener('click', function(e) {
+    if (e.target === this) hidePdfModal();
+  });
+</script>
+</body>
+</html>

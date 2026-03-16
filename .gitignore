@@ -1,0 +1,20 @@
+# ── 환경변수 (DB 비밀번호 등 절대 올리지 않음) ──
+Backend/.env
+
+# ── Node.js 의존성 ──
+Backend/node_modules/
+Backend/uploads/
+
+# ── 이미지 파일 (용량이 크므로 제외, 필요시 주석 해제) ──
+# Image/
+
+# ── 시스템 파일 ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── 에디터 설정 ──
+.vscode/
+.idea/
+*.suo
+*.user
