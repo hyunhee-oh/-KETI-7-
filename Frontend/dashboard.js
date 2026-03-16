@@ -340,6 +340,15 @@ const USE_API  = (typeof window._USE_API  !== 'undefined') ? window._USE_API  : 
 // 배포된 백엔드 URL. 로컬: '' (상대경로), Railway 배포 시: 'https://xxx.railway.app'
 const API_BASE = (typeof window._API_BASE !== 'undefined') ? window._API_BASE : '';
 
+// 이미지 경로 앞에 API_BASE를 붙여 절대 URL로 변환
+// /Image/... → https://railway.app/Image/...  (GitHub Pages에서 이미지 깨짐 방지)
+function resolveImgUrl(path) {
+  if (!path) return null;
+  if (path.startsWith('data:') || path.startsWith('http')) return path;
+  if (path.startsWith('/') && API_BASE) return API_BASE + path;
+  return path;
+}
+
 async function loadFromStorage() {
   if (USE_API) {
     try {
@@ -533,7 +542,7 @@ function buildTrendCard(tech, parentItem, type) {
   if (hasImages) {
     const items = tech.caps.map(c => {
       if (c.image) {
-        return `<div class="tc-img-item"><img src="${esc(c.image)}" alt="${esc(c.title)}"><span class="tc-img-label">${esc(c.title)}</span></div>`;
+        return `<div class="tc-img-item"><img src="${esc(resolveImgUrl(c.image))}" alt="${esc(c.title)}"><span class="tc-img-label">${esc(c.title)}</span></div>`;
       }
       return `<div class="tc-img-item" style="background:#F8F9FB;display:flex;align-items:center;justify-content:center;aspect-ratio:4/3"><span style="color:var(--text-4);font-size:14px">${esc(c.title)}</span></div>`;
     }).join('');
@@ -946,7 +955,7 @@ function addCapRow(container, cap, idx) {
   row.className = 'cap-edit-row';
   const hasImg = cap.image ? true : false;
   row.innerHTML = `
-    <div class="cap-preview${hasImg ? ' has-img' : ''}">${hasImg ? `<img src="${esc(cap.image)}" alt="">` : '<span class="cap-preview-empty">No Image</span>'}</div>
+    <div class="cap-preview${hasImg ? ' has-img' : ''}">${hasImg ? `<img src="${esc(resolveImgUrl(cap.image))}" alt="">` : '<span class="cap-preview-empty">No Image</span>'}</div>
     <input type="text" class="form-input cap-title-input" value="${esc(cap.title || '')}" placeholder="보유역량 제목">
     <label class="cap-img-label">
       <input type="file" accept="image/*" style="display:none" onchange="capFileChange(this)">
@@ -981,7 +990,9 @@ function capFileChange(input) {
       _uploadCapFile(file, title || 'image', section).then(url => {
         if (url) {
           row.dataset.image = url;
-          preview.innerHTML = `<img src="${url}" alt="">`;
+          // resolveImgUrl로 Railway 절대 URL 변환 (GitHub Pages에서 깨짐 방지)
+          preview.innerHTML = `<img src="${resolveImgUrl(url)}" alt="">`;
+          preview.classList.add('has-img');
         }
       });
     }
