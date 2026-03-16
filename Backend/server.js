@@ -3,10 +3,13 @@ const express  = require('express');
 const cors     = require('cors');
 const path     = require('path');
 
-const mapItemsRouter = require('./routes/mapItems');
-const techsRouter    = require('./routes/techs');
-const imagesRouter   = require('./routes/images');
-const auditRouter    = require('./routes/audit');
+const mapItemsRouter  = require('./routes/mapItems');
+const techsRouter     = require('./routes/techs');
+const imagesRouter    = require('./routes/images');
+const auditRouter     = require('./routes/audit');
+const authRouter      = require('./routes/auth');
+const usersRouter     = require('./routes/users');
+const approvalsRouter = require('./routes/approvals');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +33,9 @@ app.use(express.static(path.join(PROJECT_ROOT, 'Frontend')));
 app.use('/Image', express.static(path.join(PROJECT_ROOT, 'Image')));
 
 // ─── API 라우터 ──────────────────────────────────────────
+app.use('/api', authRouter);
+app.use('/api', usersRouter);
+app.use('/api', approvalsRouter);
 app.use('/api', mapItemsRouter);
 app.use('/api', techsRouter);
 app.use('/api', imagesRouter);

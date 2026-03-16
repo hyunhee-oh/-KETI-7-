@@ -8,6 +8,7 @@ const express = require('express');
 const router  = express.Router();
 const pool    = require('../db');
 const { logAudit } = require('./audit');
+const { optionalAuth } = require('../middleware/auth');
 
 /**
  * 이미지 경로 정규화
@@ -39,7 +40,23 @@ router.get('/techs/:id', async (req, res) => {
 });
 
 // ── 유망기술 추가 ───────────────────────────────────────────
-router.post('/techs', async (req, res) => {
+router.post('/techs', optionalAuth, async (req, res) => {
+  // Manager → pending_changes로 분기
+  if (req.user && req.user.role === 'manager') {
+    try {
+      const result = await pool.query(
+        `INSERT INTO pending_changes (requester_id, target_type, target_id, action, after_data)
+         VALUES ($1,'tech',$2,'CREATE',$3) RETURNING *`,
+        [req.user.id, req.body.id, JSON.stringify(req.body)]
+      );
+      return res.status(201).json({ pending: true, change_id: result.rows[0].id });
+    } catch (err) {
+      return res.status(500).json({ error: '변경 요청 저장 실패' });
+    }
+  }
+  return _createTech(req, res);
+});
+async function _createTech(req, res) {
   const { id, item_id, title, asis, tobe, centers, mgr_a, mgr_b, sort_order, caps } = req.body;
   if (!id || !item_id || !title) {
     return res.status(400).json({ error: 'id, item_id, title 필수' });
@@ -78,11 +95,28 @@ router.post('/techs', async (req, res) => {
   } finally {
     client.release();
   }
-});
+}
 
 // ── 유망기술 수정 ───────────────────────────────────────────
-// caps 배열을 통째로 교체 (기존 caps 삭제 후 재삽입)
-router.put('/techs/:id', async (req, res) => {
+router.put('/techs/:id', optionalAuth, async (req, res) => {
+  if (req.user && req.user.role === 'manager') {
+    try {
+      const before = await pool.query('SELECT * FROM techs WHERE id=$1', [req.params.id]);
+      const result = await pool.query(
+        `INSERT INTO pending_changes (requester_id, target_type, target_id, action, before_data, after_data)
+         VALUES ($1,'tech',$2,'UPDATE',$3,$4) RETURNING *`,
+        [req.user.id, req.params.id,
+         before.rows[0] ? JSON.stringify(before.rows[0]) : null,
+         JSON.stringify(req.body)]
+      );
+      return res.json({ pending: true, change_id: result.rows[0].id });
+    } catch (err) {
+      return res.status(500).json({ error: '변경 요청 저장 실패' });
+    }
+  }
+  return _updateTech(req, res);
+});
+async function _updateTech(req, res) {
   const { id } = req.params;
   const { title, asis, tobe, centers, mgr_a, mgr_b, caps } = req.body;
   const client = await pool.connect();
@@ -124,10 +158,27 @@ router.put('/techs/:id', async (req, res) => {
   } finally {
     client.release();
   }
-});
+}
 
 // ── 유망기술 삭제 ───────────────────────────────────────────
-router.delete('/techs/:id', async (req, res) => {
+router.delete('/techs/:id', optionalAuth, async (req, res) => {
+  if (req.user && req.user.role === 'manager') {
+    try {
+      const before = await pool.query('SELECT * FROM techs WHERE id=$1', [req.params.id]);
+      const result = await pool.query(
+        `INSERT INTO pending_changes (requester_id, target_type, target_id, action, before_data)
+         VALUES ($1,'tech',$2,'DELETE',$3) RETURNING *`,
+        [req.user.id, req.params.id,
+         before.rows[0] ? JSON.stringify(before.rows[0]) : null]
+      );
+      return res.json({ pending: true, change_id: result.rows[0].id });
+    } catch (err) {
+      return res.status(500).json({ error: '변경 요청 저장 실패' });
+    }
+  }
+  return _deleteTech(req, res);
+});
+async function _deleteTech(req, res) {
   const { id } = req.params;
   try {
     const before = await pool.query('SELECT * FROM techs WHERE id=$1', [id]);
@@ -141,6 +192,6 @@ router.delete('/techs/:id', async (req, res) => {
     console.error('DELETE /api/techs/:id 오류:', err);
     res.status(500).json({ error: '유망기술 삭제 실패' });
   }
-});
+}
 
 module.exports = router;

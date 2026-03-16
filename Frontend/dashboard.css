@@ -1029,3 +1029,59 @@ body.admin-mode .tc-edit-btn { display: block; }
   background: var(--surface); padding: 20px; overflow: auto;
 }
 #mapWrap:fullscreen .tech-map { min-height: 100vh; }
+
+/* ── 승인 대기 중 카드 스타일 ── */
+.mc-pending, .tc-pending {
+  border: 2px solid #ED8936 !important;
+  background: #FFFAF0 !important;
+  position: relative;
+}
+.pending-badge {
+  display: inline-block;
+  background: #ED8936;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+/* ── 관리 페이지 공통 ── */
+.admin-page {
+  display: none;
+  padding: 28px;
+  max-width: 1100px;
+}
+.admin-page.active { display: block; }
+.admin-page h2 { font-size: 20px; margin-bottom: 18px; }
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin-table th, .admin-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.admin-table th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--text-3);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.admin-table tr:hover td { background: #F7FAFC; }
+.admin-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.admin-btn.approve { background: #48BB78; color: #fff; border-color: #48BB78; }
+.admin-btn.reject  { background: #FC8181; color: #fff; border-color: #FC8181; }
+.admin-btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); }

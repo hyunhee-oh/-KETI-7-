@@ -21,11 +21,14 @@ async function setupDB() {
   const client = await pool.connect();
   try {
     console.log('DB 연결 성공!');
-    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-    console.log('schema.sql 실행 중...');
+    const v2Path = path.join(__dirname, 'schema_v2.sql');
+    const v1Path = path.join(__dirname, 'schema.sql');
+    const schemaFile = fs.existsSync(v2Path) ? v2Path : v1Path;
+    const sql = fs.readFileSync(schemaFile, 'utf8');
+    console.log(`${path.basename(schemaFile)} 실행 중...`);
     await client.query(sql);
-    console.log('✔ 테이블 생성 완료!');
-    console.log('  - map_items, techs, caps, audit_logs');
+    console.log('테이블 생성 완료!');
+    console.log('  - map_items, techs, caps, audit_logs, users, pending_changes, permission_logs');
   } catch (err) {
     console.error('스키마 실행 오류:', err.message);
   } finally {

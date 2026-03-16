@@ -3,7 +3,8 @@
  * 실행: node seed.js
  */
 require('dotenv').config();
-const pool = require('./db');
+const pool   = require('./db');
+const bcrypt = require('bcrypt');
 
 // ─── DEFAULT_MAP_DATA (dashboard.js 와 동일) ─────────────
 const DEFAULT_MAP_DATA = {
@@ -363,8 +364,41 @@ async function seed() {
       }
     }
 
+    // ── 사용자 시드: Admin + 기존 담당자 Manager 자동 생성 ──
+    console.log('\n사용자 계정 생성 중...');
+    const defaultPw = await bcrypt.hash('keti2026', 10);
+
+    // Admin 계정
+    await client.query(
+      `INSERT INTO users (name, email, password_hash, role)
+       VALUES ('관리자','admin@keti.re.kr',$1,'admin') ON CONFLICT (name) DO NOTHING`,
+      [defaultPw]
+    );
+    console.log('  [admin] 관리자 계정 생성 완료');
+
+    // 담당자 이름 수집 (중복 제거)
+    const mgrNames = new Set();
+    for (const items of Object.values(DEFAULT_MAP_DATA)) {
+      for (const item of items) {
+        if (item.mgr_a) mgrNames.add(item.mgr_a);
+        if (item.mgr_b) mgrNames.add(item.mgr_b);
+        for (const tech of item.techs) {
+          if (tech.mgr_a) mgrNames.add(tech.mgr_a);
+          if (tech.mgr_b) mgrNames.add(tech.mgr_b);
+        }
+      }
+    }
+    for (const name of mgrNames) {
+      await client.query(
+        `INSERT INTO users (name, password_hash, role)
+         VALUES ($1,$2,'manager') ON CONFLICT (name) DO NOTHING`,
+        [name, defaultPw]
+      );
+      console.log(`  [manager] ${name} 계정 생성 완료`);
+    }
+
     await client.query('COMMIT');
-    console.log('시드 데이터 삽입 완료!');
+    console.log('\n시드 데이터 삽입 완료!');
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('시드 오류:', err);

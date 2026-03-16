@@ -331,6 +331,9 @@ const DEFAULT_MAP_DATA = {
 // ─── 상태 ────────────────────────────────────────────────
 let MAP_DATA = JSON.parse(JSON.stringify(DEFAULT_MAP_DATA));
 let isAdmin = false;
+let currentUser = null;   // { id, name, role } — null이면 비로그인(방문자)
+let authToken = null;     // JWT 토큰
+let pendingCardIds = [];  // 승인 대기 중인 카드 ID 목록 [{target_type, target_id}]
 let editingId = null;
 let editingSection = null;
 
@@ -358,6 +361,145 @@ function resolveImgUrl(path) {
   // 그 외 /로 시작하는 경로는 API_BASE 사용
   if (path.startsWith('/') && API_BASE) return API_BASE + path;
   return path;
+}
+
+// ─── 인증 헤더 생성 헬퍼 ────────────────────────────────
+function authHeaders(extra) {
+  const h = { ...(extra || {}) };
+  if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+  return h;
+}
+function authJsonHeaders() {
+  return authHeaders({ 'Content-Type': 'application/json' });
+}
+
+// ─── 로그인/로그아웃 ────────────────────────────────────
+async function openLoginModal() {
+  const modal = document.getElementById('loginModal');
+  const sel   = document.getElementById('loginNameSelect');
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginPassword').value = '';
+
+  // 사용자 목록 로드
+  try {
+    const res  = await fetch(API_BASE + '/api/auth/managers');
+    const list = await res.json();
+    sel.innerHTML = '<option value="">-- 이름을 선택하세요 --</option>';
+    list.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.name;
+      opt.textContent = u.name + (u.role === 'admin' ? ' (Admin)' : '');
+      sel.appendChild(opt);
+    });
+  } catch {
+    sel.innerHTML = '<option value="">목록 로드 실패</option>';
+  }
+  modal.classList.add('show');
+}
+function closeLoginModal() {
+  document.getElementById('loginModal').classList.remove('show');
+}
+
+async function doLogin() {
+  const name     = document.getElementById('loginNameSelect').value;
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+
+  if (!name || !password) {
+    errEl.textContent = '이름과 비밀번호를 모두 입력해주세요.';
+    errEl.style.display = 'block';
+    return;
+  }
+  try {
+    const res = await fetch(API_BASE + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || '로그인 실패';
+      errEl.style.display = 'block';
+      return;
+    }
+    authToken   = data.token;
+    currentUser = data.user;
+    localStorage.setItem('authToken', authToken);
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+    closeLoginModal();
+    applyLoginState();
+  } catch (e) {
+    errEl.textContent = '서버 연결 실패: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+function logout() {
+  authToken   = null;
+  currentUser = null;
+  isAdmin     = false;
+  pendingCardIds = [];
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('currentUser');
+  applyLoginState();
+}
+
+function applyLoginState() {
+  const avatar  = document.getElementById('userAvatar');
+  const display = document.getElementById('userDisplayName');
+  const btn     = document.getElementById('adminBtn');
+  const text    = document.getElementById('adminBtnText');
+  const banner  = document.getElementById('adminBanner');
+
+  if (currentUser) {
+    avatar.textContent  = currentUser.name.charAt(0);
+    display.textContent = currentUser.name;
+    isAdmin = true;
+    btn.classList.add('is-admin');
+    text.textContent = '로그아웃';
+    banner.classList.add('show');
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    document.body.classList.add('admin-mode');
+    // Admin만 권한 설정 메뉴 표시
+    const permMenu = document.getElementById('permMenuItem');
+    if (permMenu) permMenu.style.display = (currentUser.role === 'admin') ? '' : 'none';
+    loadPendingCards();
+  } else {
+    avatar.textContent  = '?';
+    display.textContent = '방문자';
+    isAdmin = false;
+    btn.classList.remove('is-admin');
+    text.textContent = '관리자 모드';
+    banner.classList.remove('show');
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    document.body.classList.remove('admin-mode');
+  }
+  renderMap();
+  renderAllTrendTabs();
+}
+
+async function loadPendingCards() {
+  if (!USE_API) return;
+  try {
+    const res  = await fetch(API_BASE + '/api/approvals/pending-cards');
+    pendingCardIds = await res.json();
+  } catch { pendingCardIds = []; }
+}
+
+function isCardPending(type, id) {
+  return pendingCardIds.some(p => p.target_type === type && p.target_id === id);
+}
+
+// 카드 편집 가능 여부 판정
+function canEditCard(itemOrTech, parentItem) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'admin') return true;
+  // Manager: 담당자 기준
+  const n = currentUser.name;
+  if (itemOrTech.mgr_a === n || itemOrTech.mgr_b === n) return true;
+  if (parentItem && (parentItem.mgr_a === n || parentItem.mgr_b === n)) return true;
+  return false;
 }
 
 async function loadFromStorage() {
@@ -397,14 +539,21 @@ async function apiSaveMapItem(item, section, isNew) {
     const body = { ...item, section };
     const method = isNew ? 'POST' : 'PUT';
     const url = isNew ? API_BASE + '/api/map/items' : API_BASE + `/api/map/items/${item.id}`;
-    await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const res = await fetch(url, { method, headers: authJsonHeaders(), body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (data.pending) {
+      alert('변경 요청이 제출되었습니다. Admin 승인 후 반영됩니다.');
+      loadPendingCards();
+    }
   } catch(e) { console.warn('apiSaveMapItem 실패:', e); }
 }
 
 async function apiDeleteMapItem(id) {
   if (!USE_API) return;
   try {
-    await fetch(API_BASE + `/api/map/items/${id}`, { method: 'DELETE' });
+    const res = await fetch(API_BASE + `/api/map/items/${id}`, { method: 'DELETE', headers: authHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (data.pending) { alert('삭제 요청이 제출되었습니다. Admin 승인 후 반영됩니다.'); loadPendingCards(); }
   } catch(e) { console.warn('apiDeleteMapItem 실패:', e); }
 }
 
@@ -414,11 +563,16 @@ async function apiSaveTech(tech, itemId, isNew) {
     const body = { ...tech, item_id: itemId };
     const method = isNew ? 'POST' : 'PUT';
     const url = isNew ? API_BASE + '/api/techs' : API_BASE + `/api/techs/${tech.id}`;
-    const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.error('apiSaveTech 서버 오류:', res.status, err);
+    const res = await fetch(url, { method, headers: authJsonHeaders(), body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok && !data.pending) {
+      console.error('apiSaveTech 서버 오류:', res.status, data);
       return false;
+    }
+    if (data.pending) {
+      alert('변경 요청이 제출되었습니다. Admin 승인 후 반영됩니다.');
+      loadPendingCards();
+      return 'pending';
     }
     return true;
   } catch(e) {
@@ -430,7 +584,9 @@ async function apiSaveTech(tech, itemId, isNew) {
 async function apiDeleteTech(id) {
   if (!USE_API) return;
   try {
-    await fetch(API_BASE + `/api/techs/${id}`, { method: 'DELETE' });
+    const res = await fetch(API_BASE + `/api/techs/${id}`, { method: 'DELETE', headers: authHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (data.pending) { alert('삭제 요청이 제출되었습니다. Admin 승인 후 반영됩니다.'); loadPendingCards(); }
   } catch(e) { console.warn('apiDeleteTech 실패:', e); }
 }
 
@@ -501,14 +657,17 @@ function getTechTitles(item) {
 
 // ─── 역량맵 렌더링 (탭1) ────────────────────────────────
 function buildMapCard(item, type) {
-  const editBtn = isAdmin
+  const showEdit = isAdmin && canEditCard(item, null);
+  const pending  = isCardPending('map_item', item.id);
+  const editBtn = showEdit
     ? `<button class="mc-edit-btn" onclick="openEditModal('${item.id}')">편집</button>` : '';
   const techsHtml = item.techs.map(t => `<span class="mc-tag">${esc(t.title)}</span>`).join('');
   const centersHtml = item.centers.map(c => `<span class="mc-center-chip">${esc(c)}</span>`).join('');
-  return `<div class="mc mc-${type}" data-id="${item.id}">
+  const pendingBadge = pending ? '<span class="pending-badge">승인 대기 중</span>' : '';
+  return `<div class="mc mc-${type}${pending ? ' mc-pending' : ''}" data-id="${item.id}">
   <div class="mc-body">
     <div class="mc-head">
-      <div class="mc-head-row">
+      <div class="mc-head-row">${pendingBadge}
         <span class="mc-name">${esc(item.name)}</span>
         <span class="mc-cnt">${item.count}명</span>
       </div>
@@ -556,6 +715,8 @@ function renderMap() {
 
 // ─── 트렌드 카드 렌더링 (탭2~4) ─────────────────────────
 function buildTrendCard(tech, parentItem, type) {
+  const showEdit = isAdmin && canEditCard(tech, parentItem);
+  const pending  = isCardPending('tech', tech.id);
   const cls = 'tc-' + type;
   const hasImages = tech.caps.some(c => c.image);
   let capsHtml;
@@ -573,7 +734,8 @@ function buildTrendCard(tech, parentItem, type) {
   const centersHtml = tech.centers.map(c => `<span class="center-c">${esc(c)}</span>`).join('');
   const mgrA = tech.mgr_a || parentItem.mgr_a;
   const mgrB = tech.mgr_b || parentItem.mgr_b;
-  return `<div class="trend-card ${cls}" data-cat="${esc(parentItem.name)}" data-tech-id="${tech.id}">
+  const pendingBadge = pending ? '<span class="pending-badge">승인 대기 중</span>' : '';
+  return `<div class="trend-card ${cls}${pending ? ' tc-pending' : ''}" data-cat="${esc(parentItem.name)}" data-tech-id="${tech.id}">
   <div class="trend-card-head">
     <div class="trend-head-left">
       <div class="trend-card-title">${esc(tech.title)}</div>
@@ -598,7 +760,8 @@ function buildTrendCard(tech, parentItem, type) {
   <div class="trend-card-foot">
     <div class="center-col"><div class="center-label">연구센터</div><div class="center-chips">${centersHtml}</div></div>
   </div>
-  <button class="tc-edit-btn" onclick="openTrendEditModal('${tech.id}')">편집</button>
+  ${showEdit ? `<button class="tc-edit-btn" onclick="openTrendEditModal('${tech.id}')">편집</button>` : ''}
+  ${pendingBadge}
 </div>`;
 }
 
@@ -1191,25 +1354,33 @@ function deleteTrendCard() {
 
 // ─── 관리자 토글 ─────────────────────────────────────────
 function toggleAdmin() {
-  isAdmin = !isAdmin;
-  const btn = document.getElementById('adminBtn');
-  const text = document.getElementById('adminBtnText');
-  const banner = document.getElementById('adminBanner');
-  if (isAdmin) {
-    btn.classList.add('is-admin');
-    text.textContent = '편집 모드 ON';
-    banner.classList.add('show');
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
-    document.body.classList.add('admin-mode');
+  if (currentUser) {
+    // 이미 로그인 상태 → 로그아웃
+    logout();
   } else {
-    btn.classList.remove('is-admin');
-    text.textContent = '관리자 모드';
-    banner.classList.remove('show');
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-    document.body.classList.remove('admin-mode');
+    // 비로그인 → 로그인 모달 표시
+    if (USE_API) {
+      openLoginModal();
+    } else {
+      // localStorage 모드 (로컬 파일): 기존처럼 단순 토글
+      isAdmin = !isAdmin;
+      if (isAdmin) {
+        document.getElementById('adminBtn').classList.add('is-admin');
+        document.getElementById('adminBtnText').textContent = '편집 모드 ON';
+        document.getElementById('adminBanner').classList.add('show');
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+        document.body.classList.add('admin-mode');
+      } else {
+        document.getElementById('adminBtn').classList.remove('is-admin');
+        document.getElementById('adminBtnText').textContent = '관리자 모드';
+        document.getElementById('adminBanner').classList.remove('show');
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+        document.body.classList.remove('admin-mode');
+      }
+      renderMap();
+      renderAllTrendTabs();
+    }
   }
-  renderMap();
-  renderAllTrendTabs();
 }
 
 // ─── 탭 / 네비게이션 ────────────────────────────────────
@@ -1233,6 +1404,7 @@ function updateBreadcrumbTab(tabId) {
 }
 
 function switchTab(el, tabId) {
+  hideAdminPages();
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
   updateBreadcrumbTab(tabId);
@@ -1260,6 +1432,7 @@ function switchTab(el, tabId) {
 }
 
 function selectTech(el, name) {
+  hideAdminPages();
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
   _currentTechName = name;
@@ -1292,8 +1465,189 @@ function selectTech(el, name) {
 }
 
 
+// ─── 관리 페이지: 변경 이력 / 담당자 권한 ────────────────
+function showAdminPage(pageId) {
+  document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(p => p.style.display = 'none');
+  document.getElementById(pageId).classList.add('active');
+  if (pageId === 'approvalPage') loadApprovals();
+  if (pageId === 'permPage')     loadUsers();
+}
+
+function hideAdminPages() {
+  document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
+}
+
+async function loadApprovals() {
+  if (!USE_API || !currentUser) return;
+  const status = document.getElementById('approvalStatusFilter').value;
+  try {
+    const res  = await fetch(API_BASE + `/api/approvals?status=${status}`, { headers: authHeaders() });
+    const list = await res.json();
+    const area = document.getElementById('approvalList');
+    if (!list.length) {
+      area.innerHTML = '<div style="color:var(--text-4);padding:20px;text-align:center">변경사항이 없습니다.</div>';
+      return;
+    }
+    let html = `<table class="admin-table"><thead><tr>
+      <th>요청자</th><th>대상</th><th>유형</th><th>작업</th><th>요청일</th><th>상태</th>
+      ${status === 'pending' && currentUser.role === 'admin' ? '<th>처리</th>' : ''}
+    </tr></thead><tbody>`;
+    list.forEach(pc => {
+      const date = new Date(pc.created_at).toLocaleString('ko-KR');
+      const actionLabel = {CREATE:'추가',UPDATE:'수정',DELETE:'삭제'}[pc.action] || pc.action;
+      const targetName = pc.after_data?.title || pc.after_data?.name || pc.target_id;
+      html += `<tr>
+        <td>${esc(pc.requester_name || '')}</td>
+        <td>${esc(targetName)}</td>
+        <td>${esc(pc.target_type)}</td>
+        <td>${esc(actionLabel)}</td>
+        <td>${date}</td>
+        <td><span class="pending-badge" style="background:${
+          pc.status==='pending'?'#ED8936':pc.status==='approved'?'#48BB78':'#FC8181'
+        }">${pc.status==='pending'?'대기':pc.status==='approved'?'승인':'반려'}</span></td>
+        ${status === 'pending' && currentUser.role === 'admin'
+          ? `<td>
+              <button class="admin-btn approve" onclick="approveChange(${pc.id})">승인</button>
+              <button class="admin-btn reject" onclick="rejectChange(${pc.id})" style="margin-left:4px">반려</button>
+             </td>` : ''}
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    area.innerHTML = html;
+  } catch(e) {
+    document.getElementById('approvalList').innerHTML = '<div style="color:#E53E3E">로드 실패: ' + e.message + '</div>';
+  }
+}
+
+async function approveChange(id) {
+  if (!confirm('이 변경사항을 승인하시겠습니까?')) return;
+  try {
+    const res = await fetch(API_BASE + `/api/approvals/${id}/approve`, {
+      method: 'POST', headers: authJsonHeaders(), body: JSON.stringify({})
+    });
+    if (res.ok) {
+      alert('승인 완료! 변경사항이 반영되었습니다.');
+      loadApprovals();
+      await loadFromStorage();
+      loadPendingCards();
+      renderMap();
+      renderAllTrendTabs();
+    } else {
+      const err = await res.json();
+      alert('승인 실패: ' + (err.error || ''));
+    }
+  } catch(e) { alert('승인 처리 오류: ' + e.message); }
+}
+
+async function rejectChange(id) {
+  const comment = prompt('반려 사유를 입력해주세요:');
+  if (comment === null) return;
+  try {
+    const res = await fetch(API_BASE + `/api/approvals/${id}/reject`, {
+      method: 'POST', headers: authJsonHeaders(), body: JSON.stringify({ comment })
+    });
+    if (res.ok) { alert('반려 완료.'); loadApprovals(); loadPendingCards(); }
+    else { const err = await res.json(); alert('반려 실패: ' + (err.error || '')); }
+  } catch(e) { alert('반려 처리 오류: ' + e.message); }
+}
+
+// ─── 담당자 권한 설정 ─────────────────────────────────────
+async function loadUsers() {
+  if (!USE_API || !currentUser || currentUser.role !== 'admin') return;
+  try {
+    const res  = await fetch(API_BASE + '/api/users', { headers: authHeaders() });
+    const list = await res.json();
+    const area = document.getElementById('userListArea');
+    let html = `<table class="admin-table"><thead><tr>
+      <th>ID</th><th>이름</th><th>이메일</th><th>역할</th><th>활성</th><th>관리</th>
+    </tr></thead><tbody>`;
+    list.forEach(u => {
+      html += `<tr>
+        <td>${u.id}</td>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.email || '-')}</td>
+        <td><span style="font-weight:600;color:${u.role==='admin'?'#E53E3E':'#3182CE'}">${u.role.toUpperCase()}</span></td>
+        <td>${u.is_active ? 'O' : 'X'}</td>
+        <td>
+          <button class="admin-btn" onclick='openEditUserModal(${JSON.stringify(u)})'>수정</button>
+          ${u.is_active ? `<button class="admin-btn reject" onclick="deactivateUser(${u.id})" style="margin-left:4px">비활성화</button>` : ''}
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    area.innerHTML = html;
+  } catch(e) {
+    document.getElementById('userListArea').innerHTML = '<div style="color:#E53E3E">로드 실패: ' + e.message + '</div>';
+  }
+}
+
+function openAddUserModal() {
+  document.getElementById('userModalTitle').textContent = '사용자 추가';
+  document.getElementById('umUserId').value = '';
+  document.getElementById('umName').value = '';
+  document.getElementById('umEmail').value = '';
+  document.getElementById('umPassword').value = '';
+  document.getElementById('umPassword').placeholder = '비밀번호';
+  document.getElementById('umRole').value = 'manager';
+  document.getElementById('userModal').classList.add('show');
+}
+
+function openEditUserModal(u) {
+  document.getElementById('userModalTitle').textContent = '사용자 수정: ' + u.name;
+  document.getElementById('umUserId').value = u.id;
+  document.getElementById('umName').value = u.name;
+  document.getElementById('umEmail').value = u.email || '';
+  document.getElementById('umPassword').value = '';
+  document.getElementById('umPassword').placeholder = '변경 시에만 입력';
+  document.getElementById('umRole').value = u.role;
+  document.getElementById('userModal').classList.add('show');
+}
+
+async function saveUser() {
+  const id   = document.getElementById('umUserId').value;
+  const body = {
+    name:     document.getElementById('umName').value.trim(),
+    email:    document.getElementById('umEmail').value.trim(),
+    role:     document.getElementById('umRole').value,
+    password: document.getElementById('umPassword').value
+  };
+  if (!body.name) { alert('이름을 입력해주세요.'); return; }
+
+  try {
+    const isNew = !id;
+    if (isNew && !body.password) { alert('비밀번호를 입력해주세요.'); return; }
+    if (!isNew && !body.password) delete body.password;
+
+    const url    = isNew ? API_BASE + '/api/users' : API_BASE + `/api/users/${id}`;
+    const method = isNew ? 'POST' : 'PUT';
+    const res = await fetch(url, { method, headers: authJsonHeaders(), body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '저장 실패'); return; }
+    document.getElementById('userModal').classList.remove('show');
+    loadUsers();
+  } catch(e) { alert('저장 오류: ' + e.message); }
+}
+
+async function deactivateUser(id) {
+  if (!confirm('이 사용자를 비활성화하시겠습니까?')) return;
+  try {
+    await fetch(API_BASE + `/api/users/${id}`, { method: 'DELETE', headers: authHeaders() });
+    loadUsers();
+  } catch(e) { alert('비활성화 오류: ' + e.message); }
+}
+
 // ─── 초기화 ──────────────────────────────────────────────
 (async function init() {
+  // 저장된 토큰으로 세션 복구
+  const savedToken = localStorage.getItem('authToken');
+  const savedUser  = localStorage.getItem('currentUser');
+  if (savedToken && savedUser) {
+    authToken   = savedToken;
+    currentUser = JSON.parse(savedUser);
+    applyLoginState();
+  }
+
   await loadFromStorage();
   renderMap();
   renderAllTrendTabs();
