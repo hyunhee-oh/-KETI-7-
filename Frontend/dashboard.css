@@ -461,6 +461,7 @@ input { font-family: inherit; }
 .tc-base   .flow-tag.tobe-tag { color: #059669; }
 .tc-fusion .flow-tag.tobe-tag { color: #2563EB; }
 .flow-text { font-size: 16px; font-weight: 600; color: var(--text-1); line-height: 1.45; }
+.flow-sub { font-size: 13px; font-weight: 400; color: var(--text-3); line-height: 1.5; margin-top: 6px; white-space: pre-line; }
 .flow-arrow-col { display: flex; align-items: center; flex-shrink: 0; }
 .flow-arrow-icon {
   width: 28px; height: 28px; border-radius: 50%;

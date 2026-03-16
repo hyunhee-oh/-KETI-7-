@@ -57,14 +57,16 @@ router.get('/map', async (req, res) => {
     for (const tech of techsRes.rows) {
       if (!techsByItem[tech.item_id]) techsByItem[tech.item_id] = [];
       techsByItem[tech.item_id].push({
-        id:      tech.id,
-        title:   tech.title,
-        asis:    tech.asis,
-        tobe:    tech.tobe,
-        centers: tech.centers || [],
-        mgr_a:   tech.mgr_a,
-        mgr_b:   tech.mgr_b,
-        caps:    capsByTech[tech.id] || []
+        id:       tech.id,
+        title:    tech.title,
+        asis:     tech.asis,
+        asis_sub: tech.asis_sub || '',
+        tobe:     tech.tobe,
+        tobe_sub: tech.tobe_sub || '',
+        centers:  tech.centers || [],
+        mgr_a:    tech.mgr_a,
+        mgr_b:    tech.mgr_b,
+        caps:     capsByTech[tech.id] || []
       });
     }
 

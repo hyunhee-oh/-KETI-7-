@@ -767,9 +767,9 @@ function buildTrendCard(tech, parentItem, type) {
   </div>
   <div class="trend-card-body">
     <div class="flow-row">
-      <div class="flow-block asis"><div class="flow-tag asis-tag">AS-IS</div><div class="flow-text">${esc(tech.asis)}</div></div>
+      <div class="flow-block asis"><div class="flow-tag asis-tag">AS-IS</div><div class="flow-text">${esc(tech.asis)}${tech.asis_sub ? `<div class="flow-sub">${esc(tech.asis_sub)}</div>` : ''}</div></div>
       <div class="flow-arrow-col"><div class="flow-arrow-icon">&#8594;</div></div>
-      <div class="flow-block tobe"><div class="flow-tag tobe-tag">TO-BE</div><div class="flow-text">${esc(tech.tobe)}</div></div>
+      <div class="flow-block tobe"><div class="flow-tag tobe-tag">TO-BE</div><div class="flow-text">${esc(tech.tobe)}${tech.tobe_sub ? `<div class="flow-sub">${esc(tech.tobe_sub)}</div>` : ''}</div></div>
     </div>
     <div class="tc-cap-section">
       <div class="tc-cap-label">KETI 보유역량</div>
@@ -1114,7 +1114,7 @@ function syncTechs(item, newTitles) {
   const added = newTitles.filter(t => !existingTitles.includes(t));
   item.techs = kept;
   added.forEach(title => {
-    const newTech = { id: uid(), title, asis:'', tobe:'', caps:[], centers:[], mgr_a:'', mgr_b:'' };
+    const newTech = { id: uid(), title, asis:'', asis_sub:'', tobe:'', tobe_sub:'', caps:[], centers:[], mgr_a:'', mgr_b:'' };
     item.techs.push(newTech);
   });
   if (added.length > 0) {
@@ -1155,7 +1155,9 @@ function openTechDetailSubModal(idx) {
   document.getElementById('tdmTitle').textContent = '유망기술 상세: ' + tech.title + ' (' + (idx+1) + '/' + pendingTechDetails.length + ')';
   document.getElementById('tdmTechTitle').value = tech.title;
   document.getElementById('tdmAsis').value = tech.asis || '';
+  document.getElementById('tdmAsisSub').value = tech.asis_sub || '';
   document.getElementById('tdmTobe').value = tech.tobe || '';
+  document.getElementById('tdmTobeSub').value = tech.tobe_sub || '';
   document.getElementById('tdmMgrA').value = tech.mgr_a || '';
   document.getElementById('tdmMgrB').value = tech.mgr_b || '';
   initCenterDropdown('tdmCenterPicker', [...(tech.centers || [])]);
@@ -1272,7 +1274,9 @@ async function saveTechDetail() {
   const tech = pendingTechDetails[currentTechDetailIdx];
   tech.title = document.getElementById('tdmTechTitle').value.trim() || tech.title;
   tech.asis = document.getElementById('tdmAsis').value.trim();
+  tech.asis_sub = document.getElementById('tdmAsisSub').value.trim();
   tech.tobe = document.getElementById('tdmTobe').value.trim();
+  tech.tobe_sub = document.getElementById('tdmTobeSub').value.trim();
   tech.mgr_a = document.getElementById('tdmMgrA').value.trim();
   tech.mgr_b = document.getElementById('tdmMgrB').value.trim();
   tech.centers = getCenterValues('tdmCenterPicker');
@@ -1304,8 +1308,10 @@ function openTrendEditModal(techId) {
   document.getElementById('tEditTitle').value = tech.title;
   document.getElementById('tEditCat').value = item.name;
   document.getElementById('tEditCat').disabled = true;
-  document.getElementById('tEditAsis').value = tech.asis;
-  document.getElementById('tEditTobe').value = tech.tobe;
+  document.getElementById('tEditAsis').value = tech.asis || '';
+  document.getElementById('tEditAsisSub').value = tech.asis_sub || '';
+  document.getElementById('tEditTobe').value = tech.tobe || '';
+  document.getElementById('tEditTobeSub').value = tech.tobe_sub || '';
   document.getElementById('tEditMgrA').value = tech.mgr_a || item.mgr_a;
   document.getElementById('tEditMgrB').value = tech.mgr_b || item.mgr_b;
   initCenterDropdown('tEditCenterPicker', [...tech.centers]);
@@ -1354,7 +1360,9 @@ async function saveTrendEditModal() {
   const tech = found.tech;
   tech.title = document.getElementById('tEditTitle').value.trim() || tech.title;
   tech.asis = document.getElementById('tEditAsis').value.trim();
+  tech.asis_sub = document.getElementById('tEditAsisSub').value.trim();
   tech.tobe = document.getElementById('tEditTobe').value.trim();
+  tech.tobe_sub = document.getElementById('tEditTobeSub').value.trim();
   tech.mgr_a = document.getElementById('tEditMgrA').value.trim();
   tech.mgr_b = document.getElementById('tEditMgrB').value.trim();
   tech.centers = getCenterValues('tEditCenterPicker');
@@ -1651,8 +1659,8 @@ async function loadApprovals() {
       let diffHtml = '';
       if (pc.action === 'UPDATE' && pc.before_data && pc.after_data) {
         let beforeLines = '', afterLines = '';
-        const fields = ['title','asis','tobe','centers','mgr_a','mgr_b'];
-        const labels = {title:'제목',asis:'AS-IS',tobe:'TO-BE',centers:'연구센터',mgr_a:'담당자(정)',mgr_b:'담당자(부)'};
+        const fields = ['title','asis','asis_sub','tobe','tobe_sub','centers','mgr_a','mgr_b'];
+        const labels = {title:'제목',asis:'AS-IS',asis_sub:'AS-IS 소제목',tobe:'TO-BE',tobe_sub:'TO-BE 소제목',centers:'연구센터',mgr_a:'담당자(정)',mgr_b:'담당자(부)'};
         fields.forEach(f => {
           let bv = pc.before_data[f];
           let av = pc.after_data[f];
@@ -1678,7 +1686,9 @@ async function loadApprovals() {
           <div class="approval-diff-label">새 항목</div>
           <div><b>제목:</b> ${esc(d.title||'')}</div>
           ${d.asis ? `<div><b>AS-IS:</b> ${esc(d.asis)}</div>` : ''}
+          ${d.asis_sub ? `<div style="padding-left:12px;color:var(--text-3)"><b>↳ 소제목:</b> ${esc(d.asis_sub)}</div>` : ''}
           ${d.tobe ? `<div><b>TO-BE:</b> ${esc(d.tobe)}</div>` : ''}
+          ${d.tobe_sub ? `<div style="padding-left:12px;color:var(--text-3)"><b>↳ 소제목:</b> ${esc(d.tobe_sub)}</div>` : ''}
           ${centerStr ? `<div><b>연구센터:</b> ${esc(centerStr)}</div>` : ''}
         </div>`;
       } else if (pc.action === 'DELETE') {
@@ -1901,7 +1911,7 @@ async function loadUsers() {
       <th style="width:90px">역할</th>
       <th style="text-align:left">권한 범위</th>
       <th style="width:80px">상태</th>
-      <th style="width:110px">활성화 여부</th>
+      <th style="width:130px;white-space:nowrap">활성화 여부</th>
       <th style="width:110px">등록일</th>
       <th style="width:110px">수정일</th>
       <th style="width:60px">관리</th>
@@ -1920,7 +1930,7 @@ async function loadUsers() {
         <td><span class="role-tag ${u.role}">${u.role === 'admin' ? 'Admin' : 'Manager'}</span></td>
         <td style="text-align:left">${getUserScopeDisplay(u)}</td>
         <td>${statusChip}</td>
-        <td>
+        <td style="white-space:nowrap">
           <button class="admin-btn" style="font-size:13px;white-space:nowrap" onclick="toggleUserActive(${u.id})">${toggleLabel}</button>
         </td>
         <td class="date-cell">${createdAt}</td>

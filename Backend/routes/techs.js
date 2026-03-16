@@ -70,7 +70,7 @@ router.post('/techs', requireAuth, async (req, res) => {
   return _createTech(req, res);
 });
 async function _createTech(req, res) {
-  const { id, item_id, title, asis, tobe, centers, mgr_a, mgr_b, sort_order, caps } = req.body;
+  const { id, item_id, title, asis, asis_sub, tobe, tobe_sub, centers, mgr_a, mgr_b, sort_order, caps } = req.body;
   if (!id || !item_id || !title) {
     return res.status(400).json({ error: 'id, item_id, title 필수' });
   }
@@ -79,9 +79,9 @@ async function _createTech(req, res) {
     await client.query('BEGIN');
 
     const techRes = await client.query(
-      `INSERT INTO techs (id, item_id, title, asis, tobe, centers, mgr_a, mgr_b, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [id, item_id, title, asis||'', tobe||'', centers||[], mgr_a||'', mgr_b||'', sort_order||0]
+      `INSERT INTO techs (id, item_id, title, asis, asis_sub, tobe, tobe_sub, centers, mgr_a, mgr_b, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [id, item_id, title, asis||'', asis_sub||'', tobe||'', tobe_sub||'', centers||[], mgr_a||'', mgr_b||'', sort_order||0]
     );
 
     // caps 삽입
@@ -132,7 +132,7 @@ router.put('/techs/:id', requireAuth, async (req, res) => {
 });
 async function _updateTech(req, res) {
   const { id } = req.params;
-  const { title, asis, tobe, centers, mgr_a, mgr_b, caps } = req.body;
+  const { title, asis, asis_sub, tobe, tobe_sub, centers, mgr_a, mgr_b, caps } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -144,9 +144,9 @@ async function _updateTech(req, res) {
     }
 
     const techRes = await client.query(
-      `UPDATE techs SET title=$1, asis=$2, tobe=$3, centers=$4, mgr_a=$5, mgr_b=$6
-       WHERE id=$7 RETURNING *`,
-      [title, asis||'', tobe||'', centers||[], mgr_a||'', mgr_b||'', id]
+      `UPDATE techs SET title=$1, asis=$2, asis_sub=$3, tobe=$4, tobe_sub=$5, centers=$6, mgr_a=$7, mgr_b=$8
+       WHERE id=$9 RETURNING *`,
+      [title, asis||'', asis_sub||'', tobe||'', tobe_sub||'', centers||[], mgr_a||'', mgr_b||'', id]
     );
 
     // caps 전체 교체
