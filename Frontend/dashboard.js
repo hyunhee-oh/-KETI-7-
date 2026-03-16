@@ -340,11 +340,22 @@ const USE_API  = (typeof window._USE_API  !== 'undefined') ? window._USE_API  : 
 // 배포된 백엔드 URL. 로컬: '' (상대경로), Railway 배포 시: 'https://xxx.railway.app'
 const API_BASE = (typeof window._API_BASE !== 'undefined') ? window._API_BASE : '';
 
-// 이미지 경로 앞에 API_BASE를 붙여 절대 URL로 변환
-// /Image/... → https://railway.app/Image/...  (GitHub Pages에서 이미지 깨짐 방지)
+// GitHub raw 콘텐츠 베이스 URL (Image/ 폴더 이미지 서빙용)
+const GITHUB_RAW = 'https://raw.githubusercontent.com/hyunhee-oh/-KETI-7-/main';
+
+// 이미지 경로를 절대 URL로 변환
+// - Cloudinary URL (https://res.cloudinary.com/...) → 그대로
+// - /Image/... 또는 Image/... → GitHub raw 콘텐츠 URL
+// - data: → 그대로 (로컬 미리보기)
 function resolveImgUrl(path) {
   if (!path) return null;
-  if (path.startsWith('data:') || path.startsWith('http')) return path;
+  if (path.startsWith('data:')) return path;
+  if (path.startsWith('http')) return path;  // Cloudinary 등 절대 URL
+  // /Image/... → GitHub raw URL
+  if (path.startsWith('/Image/')) return GITHUB_RAW + path;
+  if (path.startsWith('Image/'))  return GITHUB_RAW + '/' + path;
+  if (path.startsWith('../Image/')) return GITHUB_RAW + '/' + path.slice(3);
+  // 그 외 /로 시작하는 경로는 API_BASE 사용
   if (path.startsWith('/') && API_BASE) return API_BASE + path;
   return path;
 }
