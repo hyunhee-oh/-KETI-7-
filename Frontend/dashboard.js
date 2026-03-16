@@ -377,14 +377,13 @@ function authJsonHeaders() {
 async function openLoginModal() {
   const modal = document.getElementById('loginModal');
   const sel   = document.getElementById('loginNameSelect');
-  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginError').classList.remove('show');
   document.getElementById('loginPassword').value = '';
 
-  // 사용자 목록 로드
   try {
     const res  = await fetch(API_BASE + '/api/auth/managers');
     const list = await res.json();
-    sel.innerHTML = '<option value="">-- 이름을 선택하세요 --</option>';
+    sel.innerHTML = '<option value="">이름을 선택하세요</option>';
     list.forEach(u => {
       const opt = document.createElement('option');
       opt.value = u.name;
@@ -407,7 +406,7 @@ async function doLogin() {
 
   if (!name || !password) {
     errEl.textContent = '이름과 비밀번호를 모두 입력해주세요.';
-    errEl.style.display = 'block';
+    errEl.classList.add('show');
     return;
   }
   try {
@@ -419,7 +418,7 @@ async function doLogin() {
     const data = await res.json();
     if (!res.ok) {
       errEl.textContent = data.error || '로그인 실패';
-      errEl.style.display = 'block';
+      errEl.classList.add('show');
       return;
     }
     authToken   = data.token;
@@ -431,7 +430,7 @@ async function doLogin() {
     applyLoginState();
   } catch (e) {
     errEl.textContent = '서버 연결 실패: ' + e.message;
-    errEl.style.display = 'block';
+    errEl.classList.add('show');
   }
 }
 
@@ -442,7 +441,13 @@ function logout() {
   pendingCardIds = [];
   localStorage.removeItem('authToken');
   localStorage.removeItem('currentUser');
+  hideAdminPages();
   applyLoginState();
+  // AI 탭의 첫 번째 탭(개요)으로 복귀
+  const firstTab = document.querySelector('.tab-btn');
+  if (firstTab) switchTab(firstTab, 't-overview');
+  const ov = document.getElementById('t-overview');
+  if (ov) { ov.style.display = 'flex'; }
 }
 
 function applyLoginState() {
@@ -1468,7 +1473,15 @@ function selectTech(el, name) {
 // ─── 관리 페이지: 변경 이력 / 담당자 권한 ────────────────
 function showAdminPage(pageId) {
   document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(p => p.style.display = 'none');
+  // 모든 일반 탭 콘텐츠 + 페이지 헤더 + 탭 바 숨기기
+  ['t-overview','t-core','t-base','t-fusion'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const ph = document.querySelector('.page-header');
+  if (ph) ph.style.display = 'none';
+  const tb = document.querySelector('.tab-bar');
+  if (tb) tb.style.display = 'none';
   document.getElementById(pageId).classList.add('active');
   if (pageId === 'approvalPage') loadApprovals();
   if (pageId === 'permPage')     loadUsers();
@@ -1476,47 +1489,129 @@ function showAdminPage(pageId) {
 
 function hideAdminPages() {
   document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
+  // 페이지 헤더 + 탭 바 복원
+  const ph = document.querySelector('.page-header');
+  if (ph) ph.style.display = '';
+  const tb = document.querySelector('.tab-bar');
+  if (tb) tb.style.display = '';
+}
+
+let _approvalStatus = 'pending';
+function switchApprovalTab(el, status) {
+  document.querySelectorAll('.approval-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  _approvalStatus = status;
+  loadApprovals();
 }
 
 async function loadApprovals() {
   if (!USE_API || !currentUser) return;
-  const status = document.getElementById('approvalStatusFilter').value;
+  const status = _approvalStatus;
   try {
-    const res  = await fetch(API_BASE + `/api/approvals?status=${status}`, { headers: authHeaders() });
-    const list = await res.json();
+    // 통계: 각 상태별 건수
+    const [pendRes, appRes, rejRes] = await Promise.all([
+      fetch(API_BASE + '/api/approvals?status=pending', { headers: authHeaders() }),
+      fetch(API_BASE + '/api/approvals?status=approved', { headers: authHeaders() }),
+      fetch(API_BASE + '/api/approvals?status=rejected', { headers: authHeaders() })
+    ]);
+    const [pendList, appList, rejList] = await Promise.all([pendRes.json(), appRes.json(), rejRes.json()]);
+
+    const statsEl = document.getElementById('approvalStats');
+    statsEl.innerHTML = `
+      <div class="approval-stat-card">
+        <div class="approval-stat-num" style="color:#ED8936">${pendList.length}</div>
+        <div class="approval-stat-label">승인 대기</div>
+      </div>
+      <div class="approval-stat-card">
+        <div class="approval-stat-num" style="color:#48BB78">${appList.length}</div>
+        <div class="approval-stat-label">승인 완료</div>
+      </div>
+      <div class="approval-stat-card">
+        <div class="approval-stat-num" style="color:#FC8181">${rejList.length}</div>
+        <div class="approval-stat-label">반려</div>
+      </div>`;
+
+    const list = {pending: pendList, approved: appList, rejected: rejList}[status] || [];
     const area = document.getElementById('approvalList');
     if (!list.length) {
-      area.innerHTML = '<div style="color:var(--text-4);padding:20px;text-align:center">변경사항이 없습니다.</div>';
+      area.innerHTML = `<div style="color:var(--text-4);padding:40px;text-align:center;background:var(--white);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:36px;margin-bottom:8px">📋</div>
+        <div style="font-size:15px">${status==='pending'?'승인 대기 중인 변경사항이 없습니다.':status==='approved'?'승인된 변경사항이 없습니다.':'반려된 변경사항이 없습니다.'}</div>
+      </div>`;
       return;
     }
-    let html = `<table class="admin-table"><thead><tr>
-      <th>요청자</th><th>대상</th><th>유형</th><th>작업</th><th>요청일</th><th>상태</th>
-      ${status === 'pending' && currentUser.role === 'admin' ? '<th>처리</th>' : ''}
-    </tr></thead><tbody>`;
+
+    let html = '';
     list.forEach(pc => {
       const date = new Date(pc.created_at).toLocaleString('ko-KR');
       const actionLabel = {CREATE:'추가',UPDATE:'수정',DELETE:'삭제'}[pc.action] || pc.action;
-      const targetName = pc.after_data?.title || pc.after_data?.name || pc.target_id;
-      html += `<tr>
-        <td>${esc(pc.requester_name || '')}</td>
-        <td>${esc(targetName)}</td>
-        <td>${esc(pc.target_type)}</td>
-        <td>${esc(actionLabel)}</td>
-        <td>${date}</td>
-        <td><span class="pending-badge" style="background:${
-          pc.status==='pending'?'#ED8936':pc.status==='approved'?'#48BB78':'#FC8181'
-        }">${pc.status==='pending'?'대기':pc.status==='approved'?'승인':'반려'}</span></td>
-        ${status === 'pending' && currentUser.role === 'admin'
-          ? `<td>
-              <button class="admin-btn approve" onclick="approveChange(${pc.id})">승인</button>
-              <button class="admin-btn reject" onclick="rejectChange(${pc.id})" style="margin-left:4px">반려</button>
-             </td>` : ''}
-      </tr>`;
+      const typeLabel = {tech:'유망기술',map_item:'기술명',cap:'보유역량'}[pc.target_type] || pc.target_type;
+      const targetName = pc.after_data?.title || pc.after_data?.name || pc.before_data?.title || pc.target_id;
+
+      let diffHtml = '';
+      if (pc.action === 'UPDATE' && pc.before_data && pc.after_data) {
+        let beforeLines = '', afterLines = '';
+        const fields = ['title','asis','tobe','mgr_a','mgr_b'];
+        const labels = {title:'제목',asis:'AS-IS',tobe:'TO-BE',mgr_a:'담당자(정)',mgr_b:'담당자(부)'};
+        fields.forEach(f => {
+          const bv = pc.before_data[f] || '-';
+          const av = pc.after_data[f] || '-';
+          if (bv !== av) {
+            beforeLines += `<div><b>${labels[f]||f}:</b> ${esc(String(bv))}</div>`;
+            afterLines  += `<div><b>${labels[f]||f}:</b> ${esc(String(av))}</div>`;
+          }
+        });
+        if (beforeLines) {
+          diffHtml = `<div class="approval-card-body">
+            <div class="approval-diff before"><div class="approval-diff-label">변경 전</div>${beforeLines}</div>
+            <div class="approval-diff after"><div class="approval-diff-label">변경 후</div>${afterLines}</div>
+          </div>`;
+        }
+      } else if (pc.action === 'CREATE' && pc.after_data) {
+        const d = pc.after_data;
+        diffHtml = `<div style="padding:10px 14px;background:#F0FFF4;border:1px solid #C6F6D5;border-radius:8px;font-size:13px;margin-bottom:14px">
+          <div class="approval-diff-label">새 항목</div>
+          <div><b>제목:</b> ${esc(d.title||'')}</div>
+          ${d.asis ? `<div><b>AS-IS:</b> ${esc(d.asis)}</div>` : ''}
+          ${d.tobe ? `<div><b>TO-BE:</b> ${esc(d.tobe)}</div>` : ''}
+        </div>`;
+      } else if (pc.action === 'DELETE') {
+        diffHtml = `<div style="padding:10px 14px;background:#FFF5F5;border:1px solid #FED7D7;border-radius:8px;font-size:13px;margin-bottom:14px">
+          <div class="approval-diff-label">삭제 요청</div>
+          <div>대상: ${esc(targetName)}</div>
+        </div>`;
+      }
+
+      const statusBadge = `<span class="pending-badge" style="background:${
+        pc.status==='pending'?'#ED8936':pc.status==='approved'?'#48BB78':'#FC8181'
+      }">${actionLabel}</span>`;
+
+      const actions = (status === 'pending' && currentUser.role === 'admin')
+        ? `<div class="approval-card-actions">
+            <button class="admin-btn approve" onclick="approveChange(${pc.id})">승인</button>
+            <button class="admin-btn reject" onclick="rejectChange(${pc.id})">반려</button>
+           </div>` : '';
+
+      const reviewInfo = pc.review_comment
+        ? `<div style="font-size:12px;color:var(--text-4);margin-top:8px">반려 사유: ${esc(pc.review_comment)}</div>` : '';
+
+      html += `<div class="approval-card">
+        <div class="approval-card-head">
+          <div class="approval-card-meta">
+            ${statusBadge}
+            <span class="requester">${esc(pc.requester_name||'')}</span>
+            <span style="color:var(--text-4);font-size:13px">${typeLabel} · ${esc(targetName)}</span>
+            <span class="date">${date}</span>
+          </div>
+        </div>
+        ${diffHtml}
+        ${reviewInfo}
+        ${actions}
+      </div>`;
     });
-    html += '</tbody></table>';
     area.innerHTML = html;
   } catch(e) {
-    document.getElementById('approvalList').innerHTML = '<div style="color:#E53E3E">로드 실패: ' + e.message + '</div>';
+    document.getElementById('approvalList').innerHTML = '<div style="color:#E53E3E;padding:20px">로드 실패: ' + e.message + '</div>';
   }
 }
 
@@ -1553,6 +1648,32 @@ async function rejectChange(id) {
 }
 
 // ─── 담당자 권한 설정 ─────────────────────────────────────
+function getUserScopeDisplay(u) {
+  if (u.role === 'admin') return '<span class="scope-chip" style="background:#FFF5F5;color:#E53E3E;border-color:#FED7D7">전체 권한</span>';
+  // MAP_DATA에서 이 사용자가 담당자인 카드 찾기
+  const items = [];
+  for (const section of Object.values(MAP_DATA)) {
+    for (const item of section) {
+      if (item.mgr_a === u.name || item.mgr_b === u.name) {
+        items.push({level:'기술명', name: item.name});
+      }
+      for (const tech of item.techs) {
+        if (tech.mgr_a === u.name || tech.mgr_b === u.name) {
+          // 상위가 이미 포함되면 건너뜀
+          if (item.mgr_a !== u.name && item.mgr_b !== u.name) {
+            items.push({level:'유망기술', name: tech.title, parent: item.name});
+          }
+        }
+      }
+    }
+  }
+  if (!items.length) return '<span style="color:var(--text-4);font-size:12px">미지정</span>';
+  return '<div class="scope-chips">' + items.map(i => {
+    const label = i.parent ? `${i.parent} > ${i.name}` : i.name;
+    return `<span class="scope-chip">${esc(label)}</span>`;
+  }).join('') + '</div>';
+}
+
 async function loadUsers() {
   if (!USE_API || !currentUser || currentUser.role !== 'admin') return;
   try {
@@ -1560,15 +1681,16 @@ async function loadUsers() {
     const list = await res.json();
     const area = document.getElementById('userListArea');
     let html = `<table class="admin-table"><thead><tr>
-      <th>ID</th><th>이름</th><th>이메일</th><th>역할</th><th>활성</th><th>관리</th>
+      <th style="width:40px">ID</th><th>이름</th><th>이메일</th><th>역할</th><th>권한 범위</th><th style="width:60px">활성</th><th style="width:140px">관리</th>
     </tr></thead><tbody>`;
     list.forEach(u => {
       html += `<tr>
         <td>${u.id}</td>
-        <td>${esc(u.name)}</td>
+        <td style="font-weight:600">${esc(u.name)}</td>
         <td>${esc(u.email || '-')}</td>
-        <td><span style="font-weight:600;color:${u.role==='admin'?'#E53E3E':'#3182CE'}">${u.role.toUpperCase()}</span></td>
-        <td>${u.is_active ? 'O' : 'X'}</td>
+        <td><span class="role-tag ${u.role}">${u.role === 'admin' ? 'Admin' : 'Manager'}</span></td>
+        <td>${getUserScopeDisplay(u)}</td>
+        <td>${u.is_active ? '<span style="color:#48BB78">활성</span>' : '<span style="color:var(--text-4)">비활성</span>'}</td>
         <td>
           <button class="admin-btn" onclick='openEditUserModal(${JSON.stringify(u)})'>수정</button>
           ${u.is_active ? `<button class="admin-btn reject" onclick="deactivateUser(${u.id})" style="margin-left:4px">비활성화</button>` : ''}
@@ -1582,6 +1704,54 @@ async function loadUsers() {
   }
 }
 
+function toggleScopeUI() {
+  const role = document.getElementById('umRole').value;
+  const sec  = document.getElementById('scopeSection');
+  if (role === 'admin') {
+    sec.innerHTML = `<label class="form-label" style="margin-top:8px">권한 범위</label>
+      <div style="padding:16px;background:var(--sky-pale);border-radius:8px;font-size:14px;color:var(--navy);font-weight:500;text-align:center">
+        Admin은 모든 영역의 전체 편집 권한이 자동 부여됩니다.
+      </div>`;
+  } else {
+    buildScopeTree();
+  }
+}
+
+function buildScopeTree(selectedName) {
+  const sec = document.getElementById('scopeSection');
+  const sectionLabels = {core:'AI 핵심기술', base:'AI 기반기술', fusion_left:'AI 융합기술(좌)', fusion_right:'AI 융합기술(우)'};
+  let html = `<label class="form-label" style="margin-top:8px">권한 범위</label>
+    <p style="font-size:13px;color:var(--text-4);margin:4px 0 10px">담당자(정/부)로 지정된 카드가 편집 가능 범위입니다. 아래는 현재 데이터 기준 참고용입니다.</p>
+    <div class="scope-tree">`;
+  for (const [section, items] of Object.entries(MAP_DATA)) {
+    const label = sectionLabels[section] || section;
+    html += `<details class="scope-tree-group" open>
+      <summary>${esc(label)}</summary>
+      <div class="scope-tree-items">`;
+    for (const item of items) {
+      const isMgr = selectedName && (item.mgr_a === selectedName || item.mgr_b === selectedName);
+      html += `<div class="scope-tree-item" style="${isMgr?'background:var(--sky-pale);border-radius:4px;font-weight:600':''}">
+        <span>${esc(item.name)}</span>
+        <span style="font-size:11px;color:var(--text-4);margin-left:auto">${esc(item.mgr_a||'')} / ${esc(item.mgr_b||'')}</span>
+      </div>`;
+      if (item.techs.length) {
+        html += '<div class="scope-tree-sub">';
+        for (const t of item.techs) {
+          const tMgr = selectedName && (t.mgr_a === selectedName || t.mgr_b === selectedName || isMgr);
+          html += `<div class="scope-tree-item" style="${tMgr?'background:#EBF8FF;border-radius:4px;font-weight:500':''}">
+            <span>${esc(t.title)}</span>
+            <span style="font-size:11px;color:var(--text-4);margin-left:auto">${esc(t.mgr_a||'')} / ${esc(t.mgr_b||'')}</span>
+          </div>`;
+        }
+        html += '</div>';
+      }
+    }
+    html += '</div></details>';
+  }
+  html += '</div>';
+  sec.innerHTML = html;
+}
+
 function openAddUserModal() {
   document.getElementById('userModalTitle').textContent = '사용자 추가';
   document.getElementById('umUserId').value = '';
@@ -1590,6 +1760,7 @@ function openAddUserModal() {
   document.getElementById('umPassword').value = '';
   document.getElementById('umPassword').placeholder = '비밀번호';
   document.getElementById('umRole').value = 'manager';
+  toggleScopeUI();
   document.getElementById('userModal').classList.add('show');
 }
 
@@ -1601,6 +1772,11 @@ function openEditUserModal(u) {
   document.getElementById('umPassword').value = '';
   document.getElementById('umPassword').placeholder = '변경 시에만 입력';
   document.getElementById('umRole').value = u.role;
+  if (u.role === 'admin') {
+    toggleScopeUI();
+  } else {
+    buildScopeTree(u.name);
+  }
   document.getElementById('userModal').classList.add('show');
 }
 
