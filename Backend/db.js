@@ -1,10 +1,11 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Railway는 DATABASE_URL 환경변수 하나로 제공, 로컬은 개별 변수 사용
-const pool = process.env.DATABASE_URL
+// Railway는 DATABASE_URL 또는 DATABASE_PUBLIC_URL 제공, 로컬은 개별 변수 사용
+const DB_URL = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
+const pool = DB_URL
   ? new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: DB_URL,
       ssl: { rejectUnauthorized: false }  // Railway SSL 필수
     })
   : new Pool({
