@@ -996,13 +996,22 @@ function capFileChange(input) {
       const title    = row.querySelector('.cap-title-input')
                          ? row.querySelector('.cap-title-input').value.trim()
                          : '';
+      // 업로드 중 표시 → 저장 버튼 클릭 시 대기 감지용
+      row.dataset.uploading = '1';
+      const btn = row.querySelector('.cap-img-btn');
+      if (btn) btn.textContent = '업로드 중...';
+
       _uploadCapFile(file, title || 'image', section).then(url => {
+        delete row.dataset.uploading;
+        if (btn) btn.textContent = '변경';
         if (url) {
           row.dataset.image = url;
-          // resolveImgUrl로 Railway 절대 URL 변환 (GitHub Pages에서 깨짐 방지)
           preview.innerHTML = `<img src="${resolveImgUrl(url)}" alt="">`;
           preview.classList.add('has-img');
         }
+      }).catch(() => {
+        delete row.dataset.uploading;
+        if (btn) btn.textContent = '재시도';
       });
     }
   };
@@ -1041,6 +1050,13 @@ function getCapValues() {
 }
 
 async function saveTechDetail() {
+  // 업로드 중인 이미지가 있으면 완료 대기
+  const uploadingRows = document.querySelectorAll('#tdmCapsList .cap-edit-row[data-uploading="1"]');
+  if (uploadingRows.length > 0) {
+    alert('이미지 업로드 중입니다. 잠시 후 다시 저장해주세요. (버튼이 "변경"으로 바뀌면 완료)');
+    return;
+  }
+
   const tech = pendingTechDetails[currentTechDetailIdx];
   tech.title = document.getElementById('tdmTechTitle').value.trim() || tech.title;
   tech.asis = document.getElementById('tdmAsis').value.trim();
@@ -1114,6 +1130,13 @@ function closeTrendEditModal() {
 }
 
 async function saveTrendEditModal() {
+  // 업로드 중인 이미지가 있으면 완료 대기
+  const uploadingRows = document.querySelectorAll('#tEditCapsList .cap-edit-row[data-uploading="1"]');
+  if (uploadingRows.length > 0) {
+    alert('이미지 업로드 중입니다. 잠시 후 다시 저장해주세요. (버튼이 "변경"으로 바뀌면 완료)');
+    return;
+  }
+
   const techId = document.getElementById('trendEditModal').dataset.techId;
   const found = findTech(techId);
   if (!found) return;
