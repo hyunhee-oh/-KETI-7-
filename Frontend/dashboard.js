@@ -398,13 +398,22 @@ async function apiDeleteMapItem(id) {
 }
 
 async function apiSaveTech(tech, itemId, isNew) {
-  if (!USE_API) return;
+  if (!USE_API) return true;
   try {
     const body = { ...tech, item_id: itemId };
     const method = isNew ? 'POST' : 'PUT';
     const url = isNew ? API_BASE + '/api/techs' : API_BASE + `/api/techs/${tech.id}`;
-    await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  } catch(e) { console.warn('apiSaveTech 실패:', e); }
+    const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('apiSaveTech 서버 오류:', res.status, err);
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.error('apiSaveTech 네트워크 오류:', e);
+    return false;
+  }
 }
 
 async function apiDeleteTech(id) {
@@ -1031,7 +1040,7 @@ function getCapValues() {
   return caps;
 }
 
-function saveTechDetail() {
+async function saveTechDetail() {
   const tech = pendingTechDetails[currentTechDetailIdx];
   tech.title = document.getElementById('tdmTechTitle').value.trim() || tech.title;
   tech.asis = document.getElementById('tdmAsis').value.trim();
@@ -1040,14 +1049,14 @@ function saveTechDetail() {
   tech.mgr_b = document.getElementById('tdmMgrB').value.trim();
   tech.centers = getCenterValues('tdmCenterPicker');
   tech.caps = getCapValues();
-  // API 모드: 유망기술 추가 시 item_id를 찾아서 저장
   if (USE_API) {
     const foundItem = findTech(tech.id);
     const itemId = foundItem ? foundItem.item.id : null;
     if (itemId) {
-      const sectionEntry = Object.entries(MAP_DATA).find(([,arr]) => arr.some(i => i.id === itemId));
-      const section = sectionEntry ? sectionEntry[0] : 'core';
-      apiSaveTech(tech, itemId, true);
+      // 이미 DB에 존재하면 PUT, 신규면 POST
+      const exists = await fetch(API_BASE + `/api/techs/${tech.id}`).then(r => r.ok).catch(() => false);
+      const ok = await apiSaveTech(tech, itemId, !exists);
+      if (!ok) console.warn('saveTechDetail: 저장 실패 (tech.id=', tech.id, ')');
     }
   } else {
     saveToStorage();
@@ -1104,7 +1113,7 @@ function closeTrendEditModal() {
   document.getElementById('trendEditModal').classList.remove('show');
 }
 
-function saveTrendEditModal() {
+async function saveTrendEditModal() {
   const techId = document.getElementById('trendEditModal').dataset.techId;
   const found = findTech(techId);
   if (!found) return;
@@ -1117,7 +1126,11 @@ function saveTrendEditModal() {
   tech.centers = getCenterValues('tEditCenterPicker');
   tech.caps = getTrendCapValues();
   if (USE_API) {
-    apiSaveTech(tech, found.item.id, false);
+    const ok = await apiSaveTech(tech, found.item.id, false);
+    if (!ok) {
+      alert('저장에 실패했습니다. 콘솔(F12)에서 오류를 확인해주세요.');
+      return;
+    }
   } else {
     saveToStorage();
   }

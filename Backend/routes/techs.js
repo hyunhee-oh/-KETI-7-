@@ -27,6 +27,17 @@ function resolveImagePath(image) {
   return image;
 }
 
+// ── 유망기술 단건 조회 (존재 여부 확인용) ──────────────────
+router.get('/techs/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id FROM techs WHERE id=$1', [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: '없음' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── 유망기술 추가 ───────────────────────────────────────────
 router.post('/techs', async (req, res) => {
   const { id, item_id, title, asis, tobe, centers, mgr_a, mgr_b, sort_order, caps } = req.body;
