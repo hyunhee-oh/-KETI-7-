@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KETI 7대 전략기술 역량 맵</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/9rum/paperlogy@latest/paperlogy.min.css">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<header class="header">
+  <div class="header-logo-wrap">
+    <a class="keti-logo" href="#">
+      <img src="../Image/KETI_CI국영문---어두운배경2.png" alt="KETI" style="height:50px;object-fit:contain;max-width:200px;">
+    </a>
+  </div>
+  <div class="header-main">
+    <div class="header-title-area">
+      <div class="header-title">
+        7대 전략기술 역량 현황 대시보드
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="version-chip">v2.0 · 2025.12</span>
+      <div class="header-divider"></div>
+      <div class="user-info">
+        <div class="user-avatar">오</div>
+        오현희 (기술정책실)
+      </div>
+      <div class="header-divider"></div>
+      <button class="btn-mode" id="adminBtn" onclick="toggleAdmin()">
+        <span class="mode-dot"></span>
+        <span id="adminBtnText">관리자 모드</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">전략기술 영역</div>
+    <div class="nav-item active" onclick="selectTech(this,'AI')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>
+      </div>
+      AI
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'국방')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><path d="M8 1L2 4v4c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7V4L8 1z"/></svg>
+      </div>
+      국방
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'로봇')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><circle cx="5" cy="11" r="2"/><circle cx="11" cy="11" r="2"/><rect x="3" y="4" width="10" height="6" rx="2"/><circle cx="6" cy="6.5" r="1"/><circle cx="10" cy="6.5" r="1"/><rect x="7" y="1" width="2" height="3"/><rect x="1" y="6" width="2" height="4" rx="1"/><rect x="13" y="6" width="2" height="4" rx="1"/></svg>
+      </div>
+      로봇
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'모빌리티')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><path d="M3 8l1.5-4h7L13 8H3zm-1.5 1h13l.5 2H1l.5-2zM4 12a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm8 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/></svg>
+      </div>
+      모빌리티
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'반도체')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><rect x="4" y="4" width="8" height="8" rx="1"/><rect x="6" y="6" width="4" height="4" rx="0.5" fill="white"/><path d="M6 1v3M10 1v3M6 12v3M10 12v3M1 6h3M1 10h3M12 6h3M12 10h3"/><circle cx="8" cy="8" r="1.2" fill="none" stroke="#6B7280" stroke-width="0.5"/></svg>
+      </div>
+      반도체
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'안전·보안')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><path d="M8 1L2 4v4c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7V4L8 1zm-.5 9.3L5 8l1.1-1.1 1.4 1.4 3.4-3.4L12 6l-4.5 4.3z"/></svg>
+      </div>
+      안전·보안
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'양자')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><ellipse cx="8" cy="8" rx="3" ry="7" fill="none" stroke="#6B7280" stroke-width="1.2" transform="rotate(0)"/><ellipse cx="8" cy="8" rx="3" ry="7" fill="none" stroke="#6B7280" stroke-width="1.2" transform="rotate(60 8 8)"/><ellipse cx="8" cy="8" rx="3" ry="7" fill="none" stroke="#6B7280" stroke-width="1.2" transform="rotate(120 8 8)"/><circle cx="8" cy="8" r="1.5"/></svg>
+      </div>
+      양자
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'에너지')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><path d="M9 2L5 9h4l-2 5 7-8H9l2-4H9z"/></svg>
+      </div>
+      에너지
+      <span class="nav-badge">v2.0</span>
+    </div>
+    <div class="nav-item" onclick="selectTech(this,'우주')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+      </div>
+      우주
+      <span class="nav-badge">v2.0</span>
+    </div>
+  </div>
+
+  <div class="sidebar-sep admin-only" style="display:none"></div>
+
+  <div class="sidebar-section admin-only" style="display:none">
+    <div class="sidebar-label">관리</div>
+    <div class="nav-item" onclick="alert('전체 현황 페이지')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><rect x="1" y="8" width="3" height="7" rx="1"/><rect x="5" y="5" width="3" height="10" rx="1"/><rect x="9" y="2" width="3" height="13" rx="1"/><rect x="13" y="4" width="3" height="11" rx="1"/></svg>
+      </div>
+      전체 현황 요약
+    </div>
+    <div class="nav-item" onclick="alert('변경 이력 페이지')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><rect x="2" y="1" width="12" height="14" rx="1" fill="none" stroke="#6B7280" stroke-width="1.2"/><path d="M5 5h6M5 8h6M5 11h4" stroke="#6B7280" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </div>
+      변경 이력 관리
+    </div>
+    <div class="nav-item admin-only" style="display:none" onclick="alert('담당자 권한 설정')">
+      <div class="nav-icon">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+      </div>
+      담당자 권한 설정
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div>마지막 동기화: 2025.12.10</div>
+    <div>갱신 주기: 분기별 (기술정책실)</div>
+  </div>
+</nav>
+
+<!-- ══════════════════ MAIN CONTENT ══════════════════ -->
+<main class="main">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb">KETI <span>&rsaquo; AI 기술·인력 역량</span></div>
+      <div class="page-title" id="pageTitle">
+        AI 유망기술 트렌드 &amp; KETI 보유역량 맵
+        <span class="page-badge">v2.0</span>
+      </div>
+      <div class="page-meta">
+        <span class="online-dot"></span>
+        <span>최종 업데이트: 2025.12.10</span>
+        <span class="meta-sep">|</span>
+        <span>22개 세부기술 (핵심5·기반5·융합12)</span>
+      </div>
+    </div>
+    <div class="page-actions">
+      <button class="btn" onclick="navigator.clipboard.writeText('https://hyunhee-oh.github.io/-KETI-7-/').then(function(){alert('링크가 클립보드에 복사되었습니다.\nhttps://hyunhee-oh.github.io/-KETI-7-/')}).catch(function(){alert('https://hyunhee-oh.github.io/-KETI-7-/')})">링크 공유</button>
+      <button class="btn admin-only" style="display:none" onclick="alert('변경사항 저장')">저장</button>
+    </div>
+  </div>
+
+  <!-- ADMIN BANNER -->
+  <div class="admin-banner" id="adminBanner">
+    <strong>관리자 편집 모드 활성화</strong> — 각 카드의 편집 버튼을 클릭하여 내용을 수정할 수 있습니다.
+    <button onclick="toggleAdmin()" style="margin-left:auto;background:none;border:none;font-size:13px;cursor:pointer;color:var(--amber)">닫기</button>
+  </div>
+
+  <!-- TAB NAV -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab(this,'t-overview')">
+      KETI AI 기술·인력 역량 현황 <span class="tab-count">맵</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(this,'t-core')">
+      AI 핵심기술 트렌드 및 KETI 보유 역량 <span class="tab-count">5</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(this,'t-base')">
+      AI 기반기술 트렌드 및 KETI 보유 역량 <span class="tab-count">14</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(this,'t-fusion')">
+      AI 융합기술 트렌드 및 KETI 보유 역량 <span class="tab-count">30</span>
+    </button>
+  </div>
+
+  <!-- 비AI 영역 준비 중 플레이스홀더 -->
+  <div id="techPlaceholder">
+    <div class="ph-wrap">
+      <div class="ph-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.3">
+          <path d="M9 12h6M9 16h6M9 8h2"/>
+          <path d="M13 3H8a2 2 0 00-2 2v14a2 2 0 002 2h8a2 2 0 002-2V7l-5-4z"/>
+          <path d="M13 3v4h4"/>
+          <circle cx="18" cy="18" r="4" fill="#E0E7FF" stroke="#818CF8"/>
+          <path d="M18 16v2l1 1" stroke="#818CF8"/>
+        </svg>
+      </div>
+      <div class="ph-title" id="phTitle">기술 트렌드 &amp; 보유역량</div>
+      <div class="ph-desc" id="phDesc">
+        해당 영역의 데이터를 준비 중입니다.<br>관리자가 내용을 입력할 수 있습니다.
+      </div>
+      <div class="ph-badge">준비 중</div>
+      <button class="btn admin-only" style="display:none;margin-top:20px" id="phAddBtn"
+        onclick="alert(document.getElementById('phTitle').textContent + ' 콘텐츠 추가 기능은 준비 중입니다.')">
+        + 콘텐츠 추가
+      </button>
+    </div>
+  </div>
+
+  <!-- ════ TAB 1: 기술·인력 현황 ════ -->
+  <div id="t-overview" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+
+    <!-- ── 현황 요약 카드 ── -->
+    <div class="stats-row">
+      <div class="stat-card c-navy">
+        <div class="stat-label">AI 전담 연구인력</div>
+        <div class="stat-value">OO<span class="stat-unit"> 명</span></div>
+        <div class="stat-change">&#9650; OO% (전년 대비)</div>
+      </div>
+      <div class="stat-card c-sky">
+        <div class="stat-label">연구 세부기술</div>
+        <div class="stat-value">22<span class="stat-unit"> 개</span></div>
+        <div class="stat-sub">핵심 5 · 기반 5 · 융합 12</div>
+      </div>
+      <div class="stat-card c-green">
+        <div class="stat-label">참여 연구센터</div>
+        <div class="stat-value">OO<span class="stat-unit"> 개</span></div>
+        <div class="stat-change">&#9650; O개 신규 참여</div>
+      </div>
+      <div class="stat-card c-purple">
+        <div class="stat-label">최근 업데이트</div>
+        <div class="stat-value">O<span class="stat-unit"> 건</span></div>
+        <div class="stat-sub">이번 달 수정</div>
+      </div>
+    </div>
+
+    <!-- ── 역량 맵 패널 ── -->
+    <div class="map-panel-wrap">
+      <div class="map-panel-hd">
+        <div class="mph-left">
+          <div class="mph-info">
+            <div class="mph-title">KETI AI 기술·인력 역량 맵</div>
+            <div class="mph-meta">v2.0 · 2025.12.10</div>
+          </div>
+        </div>
+        <div class="mph-right">
+          <div class="map-search">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#9CA3AF" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="text" id="mapSearchInput" placeholder="기술명, 담당자, 연구센터 검색..." oninput="filterMapCards(this.value)">
+          </div>
+          <div class="mph-divider"></div>
+          <div class="mph-legend">
+            <div class="mph-legend-item"><span class="mph-legend-bar" style="background:#7C3AED"></span>핵심기술</div>
+            <div class="mph-legend-item"><span class="mph-legend-bar" style="background:#059669"></span>기반기술</div>
+            <div class="mph-legend-item"><span class="mph-legend-bar" style="background:#3B9CF6"></span>융합기술</div>
+          </div>
+          <div class="mph-divider"></div>
+          <button class="btn-s" onclick="(function(){var el=document.getElementById('mapWrap');if(!document.fullscreenElement){el.requestFullscreen&&el.requestFullscreen();}else{document.exitFullscreen&&document.exitFullscreen();}})()">
+            전체화면
+          </button>
+          <button class="btn-s admin-only" style="display:none" onclick="openAddModal()">+ 기술 추가</button>
+        </div>
+      </div>
+      <div class="map-panel-bd" id="mapWrap">
+        <div class="tech-map" id="techMap"><!-- JS 렌더링 --></div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- ════ TAB 2: 핵심기술 트렌드 (동적 렌더링) ════ -->
+  <div id="t-core" style="display:none"></div>
+
+  <!-- ════ TAB 3: 기반기술 트렌드 (동적 렌더링) ════ -->
+  <div id="t-base" style="display:none"></div>
+
+  <!-- ════ TAB 4: 융합기술 트렌드 (동적 렌더링) ════ -->
+  <div id="t-fusion" style="display:none"></div>
+
+
+</main>
+
+<!-- ══════════════════ 역량맵 편집 모달 ══════════════════ -->
+<div class="modal-bg" id="editModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <span class="modal-title" id="modalTitle">기술 항목 편집</span>
+      <button class="modal-close" onclick="closeEditModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" id="sectionPickerRow" style="display:none">
+        <label class="form-label">추가할 카테고리</label>
+        <select class="form-input" id="editSectionPick">
+          <option value="core">AI 핵심기술</option>
+          <option value="base">AI 기반기술</option>
+          <option value="fusion_right">AI 융합기술</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label class="form-label">기술명</label>
+          <input class="form-input" id="editName" type="text" placeholder="예: 학습지능">
+        </div>
+        <div class="form-group" style="max-width:140px">
+          <label class="form-label">참여 인원 (명)</label>
+          <input class="form-input" id="editCount" type="number" min="0" placeholder="예: 53">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">① 유망기술 <span class="form-hint-inline">(키워드 입력 후 Enter)</span></label>
+        <div class="tag-input-container" id="editTechTags"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">② 연구센터</label>
+        <div class="center-picker" id="editCenterPicker"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">③ 담당자 (정)</label>
+          <input class="form-input" id="editMgrA" type="text" placeholder="예: 신사임">
+        </div>
+        <div class="form-group">
+          <label class="form-label">③ 담당자 (부)</label>
+          <input class="form-input" id="editMgrB" type="text" placeholder="예: 금승우">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" style="justify-content:space-between">
+      <button class="btn-danger" id="deleteBtn" onclick="deleteMapItem()">삭제</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel" onclick="closeEditModal()">취소</button>
+        <button class="btn-confirm" onclick="saveEditModal()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 유망기술 상세 서브모달 ══════════════════ -->
+<div class="modal-bg" id="techDetailModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <span class="modal-title" id="tdmTitle">유망기술 상세</span>
+      <button class="modal-close" onclick="skipTechDetail()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">기술명</label>
+        <input class="form-input" id="tdmTechTitle" type="text" readonly>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">AS-IS 현황</label>
+          <textarea class="form-textarea" id="tdmAsis" placeholder="현재 기술 수준을 입력하세요"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">TO-BE 목표</label>
+          <textarea class="form-textarea" id="tdmTobe" placeholder="목표 기술 수준을 입력하세요"></textarea>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">KETI 보유역량 (이미지 + 제목)</label>
+        <div id="tdmCapsList"></div>
+        <button class="btn-add-row" onclick="addCapRowBtn()">+ 보유역량 추가</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">연구센터</label>
+        <div class="center-picker" id="tdmCenterPicker"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">담당자 (정)</label>
+          <input class="form-input" id="tdmMgrA" type="text" placeholder="예: 신사임">
+        </div>
+        <div class="form-group">
+          <label class="form-label">담당자 (부)</label>
+          <input class="form-input" id="tdmMgrB" type="text" placeholder="예: 금승우">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" style="justify-content:space-between">
+      <button class="btn-cancel" onclick="skipTechDetail()">건너뛰기</button>
+      <button class="btn-confirm" onclick="saveTechDetail()">저장 후 다음</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 트렌드 카드 편집 모달 ══════════════════ -->
+<div class="modal-bg" id="trendEditModal">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <span class="modal-title" id="trendModalTitle">트렌드 카드 편집</span>
+      <button class="modal-close" onclick="closeTrendEditModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label class="form-label">기술명</label>
+          <input class="form-input" id="tEditTitle" type="text" placeholder="예: 뉴로모픽 반도체">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">카테고리</label>
+          <input class="form-input" id="tEditCat" type="text" disabled>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">AS-IS 현황</label>
+          <textarea class="form-textarea" id="tEditAsis" placeholder="현재 기술 수준을 입력하세요"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">TO-BE 목표</label>
+          <textarea class="form-textarea" id="tEditTobe" placeholder="목표 기술 수준을 입력하세요"></textarea>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">KETI 보유역량 (이미지 + 제목)</label>
+        <div id="tEditCapsList"></div>
+        <button class="btn-add-row" onclick="addTrendCapRowBtn()">+ 보유역량 추가</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">연구센터</label>
+        <div class="center-picker" id="tEditCenterPicker"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">담당자 (정)</label>
+          <input class="form-input" id="tEditMgrA" type="text" placeholder="예: 김병수">
+        </div>
+        <div class="form-group">
+          <label class="form-label">담당자 (부)</label>
+          <input class="form-input" id="tEditMgrB" type="text" placeholder="예: 장성준">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" style="justify-content:space-between">
+      <button class="btn-danger" onclick="deleteTrendCard()">삭제</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel" onclick="closeTrendEditModal()">취소</button>
+        <button class="btn-confirm" onclick="saveTrendEditModal()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ SCRIPT ══════════════════ -->
+<!-- API 모드 설정: Node.js 서버에서 서빙될 때 true, 파일 직접 열기 시 false -->
+<script>
+  // ── 배포 환경 설정 ──────────────────────────────────────────
+  // Railway 배포 후 아래 URL을 실제 Railway 서버 주소로 변경하세요.
+  // 예: window._API_BASE = 'https://keti-dashboard-production.up.railway.app';
+  // 로컬 개발 시에는 빈 문자열('')로 유지 (상대경로 사용)
+  window._API_BASE = 'https://keti-7-production.up.railway.app';
+
+  // GitHub Pages처럼 https://로 접근 시 자동으로 API 모드 활성화
+  // _API_BASE가 설정되어 있어야 실제로 동작함
+  window._USE_API = window.location.protocol !== 'file:' && window._API_BASE !== '';
+</script>
+<script src="dashboard.js"></script>
+</body>
+</html>
