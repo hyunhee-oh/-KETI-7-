@@ -1032,19 +1032,19 @@ body.admin-mode .tc-edit-btn { display: block; }
 
 /* ── 승인 대기 중 카드 스타일 ── */
 .mc-pending, .tc-pending {
-  border: 2px solid #ED8936 !important;
-  background: #FFFAF0 !important;
+  border: 2px solid var(--navy-m) !important;
+  background: #EBF8FF !important;
   position: relative;
 }
 .pending-badge {
   display: inline-block;
-  background: #ED8936;
+  background: var(--navy);
   color: #fff;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 10px;
-  margin-left: auto;
+  margin-left: 6px;
 }
 
 /* ══════════════════════════════════════════════════
@@ -1068,17 +1068,33 @@ body.admin-mode .tc-edit-btn { display: block; }
 }
 .login-modal-close:hover { background: rgba(255,255,255,.3); }
 .login-modal-left {
-  flex: 0 0 240px;
+  flex: 0 0 260px;
   background: linear-gradient(160deg, var(--navy) 0%, var(--navy-m) 100%);
   color: #fff;
-  padding: 40px 28px;
-  display: flex; flex-direction: column; justify-content: center;
+  padding: 36px 32px 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 20px;
 }
-.login-modal-brand {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 28px;
+.login-modal-logo {
+  height: 52px;
+  object-fit: contain;
+  max-width: 100%;
+  margin-top: 4px;
+}
+.login-modal-title-text {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -.3px;
 }
 .login-modal-desc {
-  font-size: 14px; line-height: 1.7; opacity: .85;
+  font-size: 13px;
+  line-height: 1.7;
+  opacity: .80;
+  white-space: normal;
 }
 .login-modal-right {
   flex: 1; padding: 40px 36px;
@@ -1128,13 +1144,17 @@ select.login-input { cursor: pointer; background-image: url("data:image/svg+xml,
    ══════════════════════════════════════════════════ */
 .admin-page {
   display: none;
-  padding: 32px;
-  max-width: 1200px;
+  padding: 0;
+  max-width: 100%;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 14px;
 }
 .admin-page.active { display: block; }
+.admin-page-inner { padding: 28px 32px; }
 .admin-page-header {
   display: flex; align-items: flex-start; justify-content: space-between;
-  margin-bottom: 24px; gap: 16px;
+  margin-bottom: 20px; gap: 16px; padding: 22px 22px 0;
 }
 .admin-page-header h2 { font-size: 20px; font-weight: 700; color: var(--text-1); margin: 0 0 4px; }
 .admin-page-desc { font-size: 14px; color: var(--text-3); margin: 0; }
@@ -1150,13 +1170,14 @@ select.login-input { cursor: pointer; background-image: url("data:image/svg+xml,
 }
 .admin-table th, .admin-table td {
   padding: 12px 16px;
-  text-align: left;
+  text-align: center;
+  font-size: 14px;
 }
 .admin-table th {
   background: var(--surface);
   font-weight: 600;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: .02em;
   border-bottom: 1px solid var(--border);
@@ -1175,22 +1196,22 @@ select.login-input { cursor: pointer; background-image: url("data:image/svg+xml,
   transition: all .15s;
 }
 .admin-btn:hover { border-color: var(--border-s); background: var(--surface); }
-.admin-btn.approve { background: #48BB78; color: #fff; border-color: #48BB78; }
-.admin-btn.approve:hover { background: #38A169; }
-.admin-btn.reject  { background: #FC8181; color: #fff; border-color: #FC8181; }
-.admin-btn.reject:hover  { background: #F56565; }
+.admin-btn.approve { background: var(--navy); color: #fff; border-color: var(--navy); }
+.admin-btn.approve:hover { background: var(--navy-d); }
+.admin-btn.reject  { background: var(--text-4); color: #fff; border-color: var(--text-4); }
+.admin-btn.reject:hover  { background: var(--text-3); }
 .admin-btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
 .admin-btn.primary:hover { background: var(--navy-d); }
 .role-tag {
-  display: inline-block; padding: 3px 10px; border-radius: 12px;
-  font-size: 12px; font-weight: 600;
+  display: inline-block; padding: 4px 12px; border-radius: 12px;
+  font-size: 14px; font-weight: 600;
 }
 .role-tag.admin  { background: #FFF5F5; color: #E53E3E; }
 .role-tag.manager { background: #EBF5FF; color: #2B6CB0; }
-.scope-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.scope-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
 .scope-chip {
-  display: inline-block; padding: 2px 8px; border-radius: 10px;
-  font-size: 11px; font-weight: 500;
+  display: inline-block; padding: 3px 10px; border-radius: 10px;
+  font-size: 13px; font-weight: 500;
   background: var(--sky-pale); color: var(--navy);
   border: 1px solid var(--sky-light);
 }
@@ -1204,8 +1225,17 @@ select.login-input { cursor: pointer; background-image: url("data:image/svg+xml,
   border-radius: 10px; border: 1px solid var(--border);
   background: var(--white);
 }
+.stat-clickable {
+  cursor: pointer; transition: box-shadow .15s, transform .1s, border-color .15s;
+}
+.stat-clickable:hover {
+  border-color: var(--navy); box-shadow: 0 4px 16px rgba(26,86,219,.13);
+  transform: translateY(-2px);
+}
 .approval-stat-num { font-size: 28px; font-weight: 700; color: var(--text-1); }
-.approval-stat-label { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+.approval-stat-label { font-size: 14px; color: var(--text-3); margin-top: 2px; }
+.approval-card-meta .requester { font-size: 15px; }
+.approval-diff { font-size: 14px; }
 .approval-toolbar { margin-bottom: 16px; }
 .approval-tabs {
   display: flex; gap: 0; background: var(--surface); border-radius: 8px;
@@ -1244,24 +1274,150 @@ select.login-input { cursor: pointer; background-image: url("data:image/svg+xml,
 .approval-diff {
   padding: 12px; border-radius: 8px; font-size: 13px; line-height: 1.5;
 }
-.approval-diff.before { background: #FFF5F5; border: 1px solid #FED7D7; }
-.approval-diff.after  { background: #F0FFF4; border: 1px solid #C6F6D5; }
+.approval-diff.before { background: var(--surface); border: 1px solid var(--border); }
+.approval-diff.after  { background: var(--sky-pale); border: 1px solid var(--sky-light); }
 .approval-diff-label { font-size: 11px; font-weight: 700; color: var(--text-3); margin-bottom: 6px; text-transform: uppercase; }
 .approval-card-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 /* 권한 범위 트리 */
 .scope-tree { max-height: 300px; overflow-y: auto; padding: 8px 0; }
-.scope-tree-group { margin-bottom: 6px; }
+.scope-tree-group { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .scope-tree-group summary {
-  font-size: 14px; font-weight: 600; color: var(--text-1);
-  cursor: pointer; padding: 6px 8px; border-radius: 6px;
+  cursor: pointer; padding: 8px 12px; background: var(--surface);
+  list-style: none; display: flex; align-items: center;
 }
-.scope-tree-group summary:hover { background: var(--surface); }
-.scope-tree-items { padding-left: 24px; }
+.scope-tree-group summary::-webkit-details-marker { display: none; }
+.scope-tree-group summary::before {
+  content: '›'; font-size: 16px; margin-right: 8px;
+  color: var(--text-4); transition: transform .15s; display: inline-block;
+}
+.scope-tree-group[open] > summary::before { transform: rotate(90deg); }
+.scope-tree-group summary:hover { background: var(--sky-pale); }
+.scope-tree-items { padding: 4px 0 8px; }
 .scope-tree-item {
   display: flex; align-items: center; gap: 6px;
-  padding: 4px 8px; font-size: 13px; color: var(--text-2);
+  padding: 5px 12px; font-size: 14px; color: var(--text-2);
 }
 .scope-tree-item label { cursor: pointer; }
-.scope-tree-sub { padding-left: 20px; }
-.scope-tree-sub .scope-tree-item { font-size: 12px; color: var(--text-3); }
+.scope-tree-sub { }
+.scope-tree-sub .scope-tree-item { font-size: 13px; color: var(--text-3); }
+
+/* 수정 중 카드 표시 (승인 대기) */
+.mc-editing, .tc-editing {
+  border: 2px solid var(--green) !important;
+  background: var(--green-bg) !important;
+  position: relative;
+}
+.editing-badge {
+  display: inline-block;
+  background: var(--green);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+}
+.approval-card { cursor: pointer; }
+.approval-card:hover { border-color: var(--navy); }
+
+/* 관리자 페이지 콘텐츠 래퍼 */
+.admin-content { padding: 0 32px 32px; }
+.approval-stats { padding: 24px 22px 16px; }
+.approval-toolbar { padding: 0 22px 16px; }
+#approvalList { padding: 0 22px 32px; }
+#userListArea { padding: 0 22px 32px; }
+.user-search-bar { padding: 0 22px 12px; }
+.perm-search-bar { padding: 0 22px 12px; }
+
+/* 활성/비활성 토글 버튼 */
+.toggle-active-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1.5px solid;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  background: none;
+}
+.toggle-active-btn.on {
+  color: var(--green);
+  border-color: var(--green-bd);
+  background: var(--green-bg);
+}
+.toggle-active-btn.on:hover {
+  background: var(--green-bd);
+}
+.toggle-active-btn.off {
+  color: var(--text-4);
+  border-color: var(--border);
+  background: var(--surface);
+}
+.toggle-active-btn.off:hover {
+  background: var(--border);
+}
+.toggle-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* 사용자 활성/비활성 탭 */
+.user-status-tabs {
+  display: flex; gap: 0; margin: 0 22px 16px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  overflow: hidden; width: fit-content;
+}
+.user-status-tab {
+  padding: 8px 24px; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none; background: var(--white);
+  color: var(--text-3); transition: all .15s;
+}
+.user-status-tab + .user-status-tab { border-left: 1.5px solid var(--border); }
+.user-status-tab.active {
+  background: var(--navy); color: #fff;
+}
+.user-status-tab:not(.active):hover { background: var(--surface); color: var(--navy); }
+
+/* 권한 범위 체크박스 선택 트리 */
+.scope-check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.scope-check-item:hover { background: var(--surface); }
+.scope-check-item input[type=checkbox] {
+  width: 15px; height: 15px; cursor: pointer;
+  accent-color: var(--navy);
+}
+.scope-check-item.checked { background: var(--sky-pale); font-weight: 600; }
+.scope-check-sub { padding-left: 24px; }
+.scope-check-sub .scope-check-item { font-size: 13px; color: var(--text-3); }
+.scope-check-sub .scope-check-item.checked { color: var(--navy); }
+
+/* 날짜 셀 */
+.date-cell { font-size: 12px; color: var(--text-4); white-space: nowrap; }
+
+/* 승인카드 이모지 없이 아이콘 */
+.approval-empty-icon {
+  width: 48px; height: 48px;
+  margin: 0 auto 12px;
+  opacity: .3;
+}
+
+/* approval page 내부 패딩 통일 */
+#approvalPage .admin-page-header,
+#permPage .admin-page-header { padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+
+.perm-search-bar { padding: 16px 22px 12px; }
+
+/* 관리 액션 버튼 그룹 */
+.user-actions { display: flex; gap: 6px; flex-wrap: wrap; }

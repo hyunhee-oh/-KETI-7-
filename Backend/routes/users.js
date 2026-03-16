@@ -82,6 +82,22 @@ router.put('/users/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// PATCH /api/users/:id/toggle-active — 활성/비활성 토글 (Admin 전용)
+router.patch('/users/:id/toggle-active', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `UPDATE users SET is_active = NOT is_active, updated_at = NOW()
+       WHERE id=$1 RETURNING id, name, is_active`,
+      [id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: '사용자 없음' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/users/:id — 사용자 비활성화 (Admin 전용, 실제 삭제 안 함)
 router.delete('/users/:id', requireAdmin, async (req, res) => {
   const { id } = req.params;

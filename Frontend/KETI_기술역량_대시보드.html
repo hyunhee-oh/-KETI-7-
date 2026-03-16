@@ -113,13 +113,7 @@
 
   <div class="sidebar-section admin-only" style="display:none">
     <div class="sidebar-label">관리</div>
-    <div class="nav-item" onclick="alert('전체 현황 페이지')">
-      <div class="nav-icon">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><rect x="1" y="8" width="3" height="7" rx="1"/><rect x="5" y="5" width="3" height="10" rx="1"/><rect x="9" y="2" width="3" height="13" rx="1"/><rect x="13" y="4" width="3" height="11" rx="1"/></svg>
-      </div>
-      전체 현황 요약
-    </div>
-    <div class="nav-item" onclick="showAdminPage('approvalPage')">
+    <div class="nav-item" id="approvalMenuItem" onclick="showAdminPage('approvalPage')">
       <div class="nav-icon">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="#6B7280"><rect x="2" y="1" width="12" height="14" rx="1" fill="none" stroke="#6B7280" stroke-width="1.2"/><path d="M5 5h6M5 8h6M5 11h4" stroke="#6B7280" stroke-width="1.2" stroke-linecap="round"/></svg>
       </div>
@@ -147,7 +141,7 @@
     <div class="admin-page-header">
       <div>
         <h2>변경 이력 관리</h2>
-        <p class="admin-page-desc">Manager가 요청한 변경사항을 검토하고 승인/반려할 수 있습니다.</p>
+        <p class="admin-page-desc" id="approvalPageDesc"></p>
       </div>
     </div>
     <div class="approval-stats" id="approvalStats"></div>
@@ -169,6 +163,9 @@
         <p class="admin-page-desc">사용자 계정을 관리하고 편집 권한 범위를 지정합니다.</p>
       </div>
       <button class="admin-btn primary" onclick="openAddUserModal()">+ 사용자 추가</button>
+    </div>
+    <div class="perm-search-bar">
+      <input type="text" id="userSearchInput" class="form-input" placeholder="이름 또는 역할로 검색..." oninput="filterUserList()" style="max-width:360px;padding:10px 14px">
     </div>
     <div id="userListArea"></div>
   </div>
@@ -239,16 +236,16 @@
 
   <!-- TAB NAV -->
   <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab(this,'t-overview')">
+    <button class="tab-btn active" id="tabBtn-overview" onclick="switchTab(this,'t-overview')">
       KETI AI 기술·인력 역량 현황 <span class="tab-count">맵</span>
     </button>
-    <button class="tab-btn" onclick="switchTab(this,'t-core')">
+    <button class="tab-btn" id="tabBtn-core" onclick="switchTab(this,'t-core')">
       AI 핵심기술 트렌드 및 KETI 보유 역량 <span class="tab-count">5</span>
     </button>
-    <button class="tab-btn" onclick="switchTab(this,'t-base')">
+    <button class="tab-btn" id="tabBtn-base" onclick="switchTab(this,'t-base')">
       AI 기반기술 트렌드 및 KETI 보유 역량 <span class="tab-count">14</span>
     </button>
-    <button class="tab-btn" onclick="switchTab(this,'t-fusion')">
+    <button class="tab-btn" id="tabBtn-fusion" onclick="switchTab(this,'t-fusion')">
       AI 융합기술 트렌드 및 KETI 보유 역량 <span class="tab-count">30</span>
     </button>
   </div>
@@ -518,16 +515,9 @@
   <div class="login-modal">
     <button class="login-modal-close" onclick="closeLoginModal()">✕</button>
     <div class="login-modal-left">
-      <div class="login-modal-brand">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        <div class="login-modal-brand-text">
-          <div style="font-size:20px;font-weight:700">KETI</div>
-          <div style="font-size:12px;opacity:.8">전략기술 역량 대시보드</div>
-        </div>
-      </div>
-      <div class="login-modal-desc">
-        관리자 모드에서 기술 역량 데이터를<br>편집하고 관리할 수 있습니다.
-      </div>
+      <img src="../Image/KETI_CI국영문---어두운배경2.png" alt="KETI" class="login-modal-logo">
+      <div class="login-modal-title-text">전략기술 역량 대시보드</div>
+      <div class="login-modal-desc">관리자 모드에서 기술 역량 데이터를 관리할 수 있습니다.</div>
     </div>
     <div class="login-modal-right">
       <h2 class="login-modal-title">관리자 로그인</h2>
