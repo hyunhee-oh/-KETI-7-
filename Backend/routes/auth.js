@@ -50,7 +50,8 @@ router.get('/auth/me', requireAuth, async (req, res) => {
 router.get('/auth/managers', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, role FROM users WHERE is_active=true ORDER BY name ASC'
+      `SELECT id, name, role FROM users WHERE is_active=true
+       ORDER BY CASE role WHEN 'admin' THEN 0 ELSE 1 END, name ASC`
     );
     res.json(result.rows);
   } catch (err) {
