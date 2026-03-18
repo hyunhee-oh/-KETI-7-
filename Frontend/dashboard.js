@@ -801,6 +801,10 @@ function renderTrendTab(tabId, sections) {
     : allItems;
   const categories = [...new Set(items.map(i => i.item.name))];
   const searchSvg = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#9CA3AF" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  const pdfSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const sectionStr = JSON.stringify(sections);
+  const titleMap = {'t-core':'AI 핵심기술 트렌드 및 KETI 보유 역량','t-base':'AI 기반기술 트렌드 및 KETI 보유 역량','t-fusion':'AI 융합기술 트렌드 및 KETI 보유 역량'};
+  const pdfTitle = titleMap[tabId] || '';
   const filterHtml = `<div class="filter-bar" data-tab="${tabId}">
     <span class="filter-label">카테고리</span>
     <span class="filter-chip active" onclick="filterChip(this)">전체</span>
@@ -809,6 +813,7 @@ function renderTrendTab(tabId, sections) {
       <span class="filter-search-icon">${searchSvg}</span>
       <input type="text" placeholder="기술명, 연구센터 검색..." oninput="applyTrendFilter(this.closest('.filter-bar'))">
     </div>
+    <button class="btn-s btn-pdf" onclick="downloadTrendPdf('${tabId}',${esc(sectionStr)},'${esc(pdfTitle)}')" title="PDF 다운로드">${pdfSvg} PDF</button>
   </div>`;
   const gridId = tabId + 'Grid';
   const cardsHtml = items.map(i => buildTrendCard(i.tech, i.item, i.type)).join('');
@@ -2291,6 +2296,295 @@ async function saveUser() {
     document.getElementById('userModal').classList.remove('show');
     loadUsers();
   } catch(e) { alert('저장 오류: ' + e.message); }
+}
+
+// ─── PDF 다운로드 ──────────────────────────────────────────
+const KETI_LOGO_URL = GITHUB_RAW + '/Image/KETI_CI%EA%B5%AD%EC%98%81%EB%AC%B8---%EC%96%B4%EB%91%90%EB%B0%B0%EA%B2%BD2.png';
+
+function _pdfDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function _pdfFileName(prefix) {
+  return prefix + '_' + _pdfDateStr().replace(/\./g,'') + '.pdf';
+}
+
+async function _loadLogoAsDataUrl() {
+  try {
+    const res = await fetch(KETI_LOGO_URL, { mode: 'cors' });
+    const blob = await res.blob();
+    return await new Promise(r => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.readAsDataURL(blob); });
+  } catch { return null; }
+}
+
+function _buildPdfHeader(logoDataUrl, title, width) {
+  const h = document.createElement('div');
+  h.className = 'pdf-header';
+  h.style.width = width + 'px';
+  h.innerHTML = `
+    ${logoDataUrl ? `<img src="${logoDataUrl}" class="pdf-header-logo" alt="KETI">` : '<span style="font-weight:800;color:#1E3A5F">KETI</span>'}
+    <span class="pdf-header-title">${esc(title)}</span>
+    <span class="pdf-header-date">${_pdfDateStr()}</span>`;
+  return h;
+}
+
+// ── 역량맵 PDF ──────────────────────────────────────────
+async function downloadMapPdf() {
+  const btn = document.querySelector('.map-panel-hd .btn-pdf');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-s"></span> 생성 중...'; }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const logoDataUrl = await _loadLogoAsDataUrl();
+    const container = document.createElement('div');
+    container.className = 'pdf-container';
+    container.style.width = '1120px';
+
+    const header = _buildPdfHeader(logoDataUrl, 'KETI AI 기술·인력 역량 현황', 1120);
+    container.appendChild(header);
+
+    const mapClone = document.getElementById('techMap').cloneNode(true);
+    mapClone.querySelectorAll('.map-add-btn, .mc-edit-btn, .admin-only').forEach(el => el.remove());
+    mapClone.style.minWidth = '0';
+    mapClone.style.width = '100%';
+    container.appendChild(mapClone);
+
+    const footer = document.createElement('div');
+    footer.className = 'pdf-footer';
+    footer.style.width = '1120px';
+    footer.innerHTML = '<span>KETI 기술역량 대시보드</span><span>1 / 1</span>';
+    container.appendChild(footer);
+
+    document.body.appendChild(container);
+    await new Promise(r => setTimeout(r, 300));
+
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff' });
+    document.body.removeChild(container);
+
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
+    const imgW = pdfW - 10;
+    const imgH = (canvas.height / canvas.width) * imgW;
+
+    if (imgH > pdfH - 10) {
+      const fitW = ((pdfH - 10) / canvas.height) * canvas.width;
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (pdfW - fitW) / 2, 5, fitW, pdfH - 10);
+    } else {
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 5, 5, imgW, imgH);
+    }
+    pdf.save(_pdfFileName('KETI_AI_역량맵'));
+  } catch (err) {
+    console.error('Map PDF 생성 오류:', err);
+    alert('PDF 생성 중 오류가 발생했습니다. 콘솔(F12)을 확인하세요.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> PDF'; }
+  }
+}
+
+// ── 트렌드 탭 PDF ──────────────────────────────────────
+function _buildPdfCard(tech, parentItem, type) {
+  const mgrA = tech.mgr_a || parentItem.mgr_a || '';
+  const mgrB = tech.mgr_b || parentItem.mgr_b || '';
+  const chipClass = 'pdf-chip-' + type;
+  const tobeClass = 'pdf-tobe-' + type;
+  const tobeTagClass = 'pdf-tag-tobe-' + type;
+  const borderClass = 'pdf-border-' + type;
+
+  const hasImages = tech.caps && tech.caps.some(c => c.image);
+  let capsHtml;
+  if (hasImages) {
+    capsHtml = `<div class="pdf-caps-grid">${tech.caps.map(c =>
+      `<div class="pdf-cap-item">${c.image ? `<img src="${esc(resolveImgUrl(c.image))}" alt="${esc(c.title)}">` : '<div style="width:120px;height:90px;background:#F3F4F6;border-radius:6px;border:1px solid #E5E9F0;display:flex;align-items:center;justify-content:center"><span style="font-size:10px;color:#9CA3AF">No Image</span></div>'}<span>${esc(c.title)}</span></div>`
+    ).join('')}</div>`;
+  } else if (tech.caps && tech.caps.length) {
+    capsHtml = `<div class="pdf-caps-chips">${tech.caps.map(c => `<span class="pdf-cap-chip">${esc(c.title)}</span>`).join('')}</div>`;
+  } else {
+    capsHtml = '<span style="font-size:11px;color:#9CA3AF">-</span>';
+  }
+
+  const centersHtml = (tech.centers || []).map(c => `<span class="pdf-center-chip">${esc(c)}</span>`).join('');
+
+  return `<div class="pdf-card ${borderClass}">
+  <div class="pdf-card-head">
+    <div>
+      <div class="pdf-card-title">${esc(tech.title)}</div>
+      <div class="pdf-card-mgr">정: ${esc(mgrA)} &nbsp; 부: ${esc(mgrB)}</div>
+    </div>
+    <span class="pdf-card-chip ${chipClass}">${esc(parentItem.name)}</span>
+  </div>
+  <div class="pdf-card-body">
+    <div class="pdf-flow-row">
+      <div class="pdf-flow-block pdf-asis">
+        <div class="pdf-flow-tag pdf-tag-asis">AS-IS</div>
+        <div class="pdf-flow-title">${esc(tech.asis || '')}</div>
+        ${tech.asis_sub ? `<div class="pdf-flow-sub">${esc(tech.asis_sub)}</div>` : ''}
+      </div>
+      <div class="pdf-flow-arrow">→</div>
+      <div class="pdf-flow-block ${tobeClass}">
+        <div class="pdf-flow-tag ${tobeTagClass}">TO-BE</div>
+        <div class="pdf-flow-title">${esc(tech.tobe || '')}</div>
+        ${tech.tobe_sub ? `<div class="pdf-flow-sub">${esc(tech.tobe_sub)}</div>` : ''}
+      </div>
+    </div>
+    <div class="pdf-caps-section">
+      <div class="pdf-caps-label">KETI 보유역량</div>
+      ${capsHtml}
+    </div>
+  </div>
+  <div class="pdf-card-foot">
+    <div class="pdf-centers-label">연구센터</div>
+    <div class="pdf-centers-chips">${centersHtml || '<span style="font-size:10px;color:#9CA3AF">-</span>'}</div>
+  </div>
+</div>`;
+}
+
+async function downloadTrendPdf(tabId, sections, title) {
+  const filterBar = document.querySelector(`.filter-bar[data-tab="${tabId}"]`);
+  const btn = filterBar ? filterBar.querySelector('.btn-pdf') : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-s"></span> 생성 중...'; }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const logoDataUrl = await _loadLogoAsDataUrl();
+    const PAGE_W = 800;
+    const dateStr = _pdfDateStr();
+
+    const allItems = [];
+    sections.forEach(sec => {
+      (MAP_DATA[sec] || []).forEach(item => {
+        const type = sectionType(sec);
+        item.techs.forEach(tech => allItems.push({ tech, item, type }));
+      });
+    });
+
+    const categoryMap = new Map();
+    allItems.forEach(({ tech, item, type }) => {
+      const key = item.name;
+      if (!categoryMap.has(key)) categoryMap.set(key, { item, type, techs: [] });
+      categoryMap.get(key).techs.push(tech);
+    });
+    const categories = [...categoryMap.entries()];
+
+    // ── 표지 페이지 ──
+    const coverEl = document.createElement('div');
+    coverEl.className = 'pdf-container';
+    coverEl.style.width = PAGE_W + 'px';
+    coverEl.innerHTML = `<div class="pdf-cover" style="width:${PAGE_W}px">
+      ${logoDataUrl ? `<img src="${logoDataUrl}" class="pdf-cover-logo" alt="KETI">` : '<div style="font-size:28px;font-weight:900;color:#1E3A5F;margin-bottom:24px">KETI</div>'}
+      <div class="pdf-cover-title">${esc(title)}</div>
+      <div class="pdf-cover-date">${dateStr}</div>
+      <div class="pdf-cover-toc">
+        <div class="pdf-cover-toc-title">목차</div>
+        ${categories.map(([name, data], i) =>
+          `<div class="pdf-cover-toc-item"><span>${i+1}. ${esc(name)}</span><span class="pdf-cover-toc-num">${data.techs.length}개 기술</span></div>`
+        ).join('')}
+      </div>
+    </div>`;
+    document.body.appendChild(coverEl);
+    await new Promise(r => setTimeout(r, 200));
+    const coverCanvas = await html2canvas(coverEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    document.body.removeChild(coverEl);
+
+    // ── 카테고리별 본문 페이지 ──
+    const sectionCanvases = [];
+    for (const [catName, data] of categories) {
+      const secEl = document.createElement('div');
+      secEl.className = 'pdf-container';
+      secEl.style.width = PAGE_W + 'px';
+      secEl.style.padding = '0 24px 24px';
+
+      const header = _buildPdfHeader(logoDataUrl, title, PAGE_W);
+      secEl.appendChild(header);
+
+      const secHeader = document.createElement('div');
+      secHeader.className = 'pdf-section-header pdf-sec-' + data.type;
+      secHeader.textContent = catName;
+      secEl.appendChild(secHeader);
+
+      const cardsDiv = document.createElement('div');
+      cardsDiv.innerHTML = data.techs.map(tech => _buildPdfCard(tech, data.item, data.type)).join('');
+      secEl.appendChild(cardsDiv);
+
+      const footerEl = document.createElement('div');
+      footerEl.className = 'pdf-footer';
+      footerEl.innerHTML = `<span>KETI 기술역량 대시보드</span><span>${catName}</span>`;
+      secEl.appendChild(footerEl);
+
+      document.body.appendChild(secEl);
+      await new Promise(r => setTimeout(r, 200));
+      const secCanvas = await html2canvas(secEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      document.body.removeChild(secEl);
+      sectionCanvases.push(secCanvas);
+    }
+
+    // ── jsPDF 조립 ──
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
+    const margin = 5;
+    const contentW = pdfW - margin * 2;
+    const contentH = pdfH - margin * 2;
+
+    function addCanvasPages(canvas, startNew) {
+      const imgW = contentW;
+      const fullImgH = (canvas.height / canvas.width) * imgW;
+
+      if (fullImgH <= contentH) {
+        if (startNew) pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, imgW, fullImgH);
+      } else {
+        const sliceHeightPx = Math.floor((contentH / fullImgH) * canvas.height);
+        let yOffset = 0;
+        let first = true;
+        while (yOffset < canvas.height) {
+          const currentSliceH = Math.min(sliceHeightPx, canvas.height - yOffset);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = currentSliceH;
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.drawImage(canvas, 0, yOffset, canvas.width, currentSliceH, 0, 0, canvas.width, currentSliceH);
+
+          if (!first || startNew) pdf.addPage();
+          const sliceImgH = (currentSliceH / canvas.width) * imgW;
+          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, imgW, sliceImgH);
+          yOffset += currentSliceH;
+          first = false;
+        }
+      }
+    }
+
+    // 표지 (첫 페이지)
+    const coverImgW = contentW;
+    const coverImgH = (coverCanvas.height / coverCanvas.width) * coverImgW;
+    if (coverImgH <= contentH) {
+      pdf.addImage(coverCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, coverImgW, coverImgH);
+    } else {
+      pdf.addImage(coverCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, coverImgW, contentH);
+    }
+
+    // 카테고리 섹션들
+    sectionCanvases.forEach(canvas => addCanvasPages(canvas, true));
+
+    // 페이지 번호 추가
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setTextColor(160);
+      pdf.text(`${i} / ${totalPages}`, pdfW - margin - 15, pdfH - 3);
+    }
+
+    const filePrefix = tabId === 't-core' ? 'KETI_AI_핵심기술' : tabId === 't-base' ? 'KETI_AI_기반기술' : 'KETI_AI_융합기술';
+    pdf.save(_pdfFileName(filePrefix));
+  } catch (err) {
+    console.error('Trend PDF 생성 오류:', err);
+    alert('PDF 생성 중 오류가 발생했습니다. 콘솔(F12)을 확인하세요.');
+  } finally {
+    const svgIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if (btn) { btn.disabled = false; btn.innerHTML = svgIcon + ' PDF'; }
+  }
 }
 
 // ─── 초기화 ──────────────────────────────────────────────

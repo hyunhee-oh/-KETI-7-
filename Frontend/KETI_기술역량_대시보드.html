@@ -322,6 +322,10 @@
             <div class="mph-legend-item"><span class="mph-legend-bar" style="background:#3B9CF6"></span>융합기술</div>
           </div>
           <div class="mph-divider"></div>
+          <button class="btn-s btn-pdf" onclick="downloadMapPdf()" title="PDF 다운로드">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            PDF
+          </button>
           <button class="btn-s" onclick="(function(){var el=document.getElementById('mapWrap');if(!document.fullscreenElement){el.requestFullscreen&&el.requestFullscreen();}else{document.exitFullscreen&&document.exitFullscreen();}})()">
             전체화면
           </button>
@@ -545,6 +549,10 @@
     </div>
   </div>
 </div>
+
+<!-- ══════════════════ PDF 라이브러리 ══════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <!-- ══════════════════ SCRIPT ══════════════════ -->
 <!-- API 모드 설정: Node.js 서버에서 서빙될 때 true, 파일 직접 열기 시 false -->
