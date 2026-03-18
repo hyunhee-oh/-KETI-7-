@@ -1434,13 +1434,13 @@ select.login-input { cursor: pointer; background-image: url("data:image/svg+xml,
 .user-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* ══ PDF 다운로드 버튼 ══ */
-.btn-pdf { color: #DC2626 !important; border-color: #FECACA !important; background: #FFF5F5 !important; margin-left: auto; }
-.btn-pdf:hover { background: #FEE2E2 !important; border-color: #F87171 !important; }
+.btn-pdf { color: #2563EB !important; border-color: #BFDBFE !important; background: #EFF6FF !important; }
+.btn-pdf:hover { background: #DBEAFE !important; border-color: #60A5FA !important; }
 .btn-pdf:disabled { opacity: .6; cursor: wait; }
-.filter-bar .btn-pdf { flex-shrink: 0; }
+.filter-bar .btn-pdf { flex-shrink: 0; margin-left: 8px; margin-right: 4px; }
 .spinner-s {
   display: inline-block; width: 12px; height: 12px;
-  border: 2px solid #FECACA; border-top-color: #DC2626;
+  border: 2px solid #BFDBFE; border-top-color: #2563EB;
   border-radius: 50%; animation: spin-s .6s linear infinite;
 }
 @keyframes spin-s { to { transform: rotate(360deg); } }

@@ -2329,20 +2329,35 @@ function _buildPdfHeader(logoDataUrl, title, width) {
   return h;
 }
 
+// ── PDF 푸터를 캔버스로 렌더링 (한글 깨짐 방지) ──
+async function _renderFooterCanvas(text, pageStr, width) {
+  const el = document.createElement('div');
+  el.className = 'pdf-container';
+  el.style.width = width + 'px';
+  el.innerHTML = `<div class="pdf-footer" style="width:${width}px"><span>${esc(text)}</span><span>${esc(pageStr)}</span></div>`;
+  document.body.appendChild(el);
+  await new Promise(r => setTimeout(r, 50));
+  const c = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+  document.body.removeChild(el);
+  return c;
+}
+
 // ── 역량맵 PDF ──────────────────────────────────────────
 async function downloadMapPdf() {
   const btn = document.querySelector('.map-panel-hd .btn-pdf');
+  const svgIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-s"></span> 생성 중...'; }
 
   try {
     const { jsPDF } = window.jspdf;
     const logoDataUrl = await _loadLogoAsDataUrl();
+    const MAP_W = 1400;
+
+    // 원래 웹 레이아웃 그대로 통합 렌더링
     const container = document.createElement('div');
     container.className = 'pdf-container';
-    container.style.width = '1120px';
-
-    const header = _buildPdfHeader(logoDataUrl, 'KETI AI 기술·인력 역량 현황', 1120);
-    container.appendChild(header);
+    container.style.width = MAP_W + 'px';
+    container.appendChild(_buildPdfHeader(logoDataUrl, 'KETI AI 기술·인력 역량 현황', MAP_W));
 
     const mapClone = document.getElementById('techMap').cloneNode(true);
     mapClone.querySelectorAll('.map-add-btn, .mc-edit-btn, .admin-only').forEach(el => el.remove());
@@ -2350,36 +2365,90 @@ async function downloadMapPdf() {
     mapClone.style.width = '100%';
     container.appendChild(mapClone);
 
-    const footer = document.createElement('div');
-    footer.className = 'pdf-footer';
-    footer.style.width = '1120px';
-    footer.innerHTML = '<span>KETI 기술역량 대시보드</span><span>1 / 1</span>';
-    container.appendChild(footer);
-
     document.body.appendChild(container);
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 500));
 
+    // 모든 카드(.mc)의 하단 Y좌표를 수집 → 안전 분할점 후보
+    const containerTop = container.getBoundingClientRect().top;
+    const containerH = container.offsetHeight;
+    const allCards = mapClone.querySelectorAll('.mc');
+    const cardRects = [];
+    allCards.forEach(c => {
+      const r = c.getBoundingClientRect();
+      cardRects.push({ top: r.top - containerTop, bottom: r.bottom - containerTop });
+    });
+
+    // 모든 카드 하단 Y 중, 어떤 카드도 걸치지 않는 Y만 안전 분할점
+    const candidateYs = [...new Set(cardRects.map(r => r.bottom))].sort((a, b) => a - b);
+    const safeBreaks = candidateYs.filter(y =>
+      !cardRects.some(r => r.top < y && y < r.bottom)
+    );
+
+    // 전체를 하나의 캔버스로 캡처
     const canvas = await html2canvas(container, { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff' });
     document.body.removeChild(container);
 
+    const pxScale = canvas.height / containerH;
+    const canvasBreaks = safeBreaks.map(bp => Math.round(bp * pxScale));
+
+    // jsPDF 조립
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
-    const imgW = pdfW - 10;
-    const imgH = (canvas.height / canvas.width) * imgW;
+    const margin = 5;
+    const contentW = pdfW - margin * 2;
+    const contentH = pdfH - margin * 2;
+    const maxSlicePx = Math.floor(contentH * canvas.width / contentW);
 
-    if (imgH > pdfH - 10) {
-      const fitW = ((pdfH - 10) / canvas.height) * canvas.width;
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (pdfW - fitW) / 2, 5, fitW, pdfH - 10);
-    } else {
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 5, 5, imgW, imgH);
+    let yOff = 0;
+    let pageNum = 0;
+
+    while (yOff < canvas.height) {
+      if (canvas.height - yOff <= maxSlicePx) {
+        const sliceH = canvas.height - yOff;
+        if (pageNum > 0) pdf.addPage();
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width; slice.height = sliceH;
+        slice.getContext('2d').drawImage(canvas, 0, yOff, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, contentW, (sliceH / canvas.width) * contentW);
+        yOff = canvas.height;
+      } else {
+        // 페이지 한계 내에서 가장 먼 안전 분할점 찾기
+        let bestBreak = -1;
+        for (let i = canvasBreaks.length - 1; i >= 0; i--) {
+          if (canvasBreaks[i] > yOff && canvasBreaks[i] <= yOff + maxSlicePx) {
+            bestBreak = canvasBreaks[i];
+            break;
+          }
+        }
+        const sliceEnd = bestBreak > 0 ? bestBreak : yOff + maxSlicePx;
+        const sliceH = sliceEnd - yOff;
+
+        if (pageNum > 0) pdf.addPage();
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width; slice.height = sliceH;
+        slice.getContext('2d').drawImage(canvas, 0, yOff, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, contentW, (sliceH / canvas.width) * contentW);
+        yOff = sliceEnd;
+      }
+      pageNum++;
     }
+
+    // 푸터 (한글 캔버스 렌더링) - 콘텐츠 아래에 배치
+    const total = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      pdf.setPage(i);
+      const fCanvas = await _renderFooterCanvas('KETI 기술역량 대시보드', `${i} / ${total}`, MAP_W);
+      const fH = (fCanvas.height / fCanvas.width) * contentW;
+      pdf.addImage(fCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, pdfH - fH - 2, contentW, fH);
+    }
+
     pdf.save(_pdfFileName('KETI_AI_역량맵'));
   } catch (err) {
     console.error('Map PDF 생성 오류:', err);
     alert('PDF 생성 중 오류가 발생했습니다. 콘솔(F12)을 확인하세요.');
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> PDF'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = svgIcon + ' PDF'; }
   }
 }
 
@@ -2443,6 +2512,7 @@ function _buildPdfCard(tech, parentItem, type) {
 async function downloadTrendPdf(tabId, sections, title) {
   const filterBar = document.querySelector(`.filter-bar[data-tab="${tabId}"]`);
   const btn = filterBar ? filterBar.querySelector('.btn-pdf') : null;
+  const svgIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-s"></span> 생성 중...'; }
 
   try {
@@ -2477,8 +2547,8 @@ async function downloadTrendPdf(tabId, sections, title) {
       <div class="pdf-cover-date">${dateStr}</div>
       <div class="pdf-cover-toc">
         <div class="pdf-cover-toc-title">목차</div>
-        ${categories.map(([name, data], i) =>
-          `<div class="pdf-cover-toc-item"><span>${i+1}. ${esc(name)}</span><span class="pdf-cover-toc-num">${data.techs.length}개 기술</span></div>`
+        ${categories.map(([name], i) =>
+          `<div class="pdf-cover-toc-item"><span>${i+1}. ${esc(name)}</span></div>`
         ).join('')}
       </div>
     </div>`;
@@ -2487,93 +2557,86 @@ async function downloadTrendPdf(tabId, sections, title) {
     const coverCanvas = await html2canvas(coverEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     document.body.removeChild(coverEl);
 
-    // ── 카테고리별 본문 페이지 ──
-    const sectionCanvases = [];
+    // ── 카드별 개별 캡처 (잘림 방지) ──
+    const cardImages = [];
     for (const [catName, data] of categories) {
-      const secEl = document.createElement('div');
-      secEl.className = 'pdf-container';
-      secEl.style.width = PAGE_W + 'px';
-      secEl.style.padding = '0 24px 24px';
+      const hdrEl = document.createElement('div');
+      hdrEl.className = 'pdf-container';
+      hdrEl.style.width = PAGE_W + 'px';
+      hdrEl.style.padding = '0 24px';
+      const hdr = document.createElement('div');
+      hdr.className = 'pdf-section-header pdf-sec-' + data.type;
+      hdr.textContent = catName;
+      hdrEl.appendChild(hdr);
+      document.body.appendChild(hdrEl);
+      await new Promise(r => setTimeout(r, 100));
+      const hdrCanvas = await html2canvas(hdrEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      document.body.removeChild(hdrEl);
+      cardImages.push({ canvas: hdrCanvas, isSectionHeader: true, catName });
 
-      const header = _buildPdfHeader(logoDataUrl, title, PAGE_W);
-      secEl.appendChild(header);
-
-      const secHeader = document.createElement('div');
-      secHeader.className = 'pdf-section-header pdf-sec-' + data.type;
-      secHeader.textContent = catName;
-      secEl.appendChild(secHeader);
-
-      const cardsDiv = document.createElement('div');
-      cardsDiv.innerHTML = data.techs.map(tech => _buildPdfCard(tech, data.item, data.type)).join('');
-      secEl.appendChild(cardsDiv);
-
-      const footerEl = document.createElement('div');
-      footerEl.className = 'pdf-footer';
-      footerEl.innerHTML = `<span>KETI 기술역량 대시보드</span><span>${catName}</span>`;
-      secEl.appendChild(footerEl);
-
-      document.body.appendChild(secEl);
-      await new Promise(r => setTimeout(r, 200));
-      const secCanvas = await html2canvas(secEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-      document.body.removeChild(secEl);
-      sectionCanvases.push(secCanvas);
+      for (const tech of data.techs) {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'pdf-container';
+        cardEl.style.width = PAGE_W + 'px';
+        cardEl.style.padding = '0 24px 12px';
+        cardEl.innerHTML = _buildPdfCard(tech, data.item, data.type);
+        document.body.appendChild(cardEl);
+        await new Promise(r => setTimeout(r, 150));
+        const cardCanvas = await html2canvas(cardEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        document.body.removeChild(cardEl);
+        cardImages.push({ canvas: cardCanvas, isSectionHeader: false, catName });
+      }
     }
 
-    // ── jsPDF 조립 ──
+    // ── jsPDF 조립: 카드 단위로 배치하여 잘림 방지 ──
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
     const margin = 5;
+    const footerH = 6;
     const contentW = pdfW - margin * 2;
-    const contentH = pdfH - margin * 2;
+    const usableH = pdfH - margin * 2 - footerH;
 
-    function addCanvasPages(canvas, startNew) {
-      const imgW = contentW;
-      const fullImgH = (canvas.height / canvas.width) * imgW;
+    // 표지
+    const coverImgH = (coverCanvas.height / coverCanvas.width) * contentW;
+    pdf.addImage(coverCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, contentW, Math.min(coverImgH, usableH));
 
-      if (fullImgH <= contentH) {
-        if (startNew) pdf.addPage();
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, imgW, fullImgH);
+    let curY = margin;
+    let needNewPage = true;
+
+    for (const item of cardImages) {
+      const imgH = (item.canvas.height / item.canvas.width) * contentW;
+
+      if (item.isSectionHeader) {
+        pdf.addPage();
+        curY = margin;
+        needNewPage = false;
+        pdf.addImage(item.canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, curY, contentW, imgH);
+        curY += imgH;
       } else {
-        const sliceHeightPx = Math.floor((contentH / fullImgH) * canvas.height);
-        let yOffset = 0;
-        let first = true;
-        while (yOffset < canvas.height) {
-          const currentSliceH = Math.min(sliceHeightPx, canvas.height - yOffset);
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = currentSliceH;
-          const ctx = sliceCanvas.getContext('2d');
-          ctx.drawImage(canvas, 0, yOffset, canvas.width, currentSliceH, 0, 0, canvas.width, currentSliceH);
-
-          if (!first || startNew) pdf.addPage();
-          const sliceImgH = (currentSliceH / canvas.width) * imgW;
-          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, imgW, sliceImgH);
-          yOffset += currentSliceH;
-          first = false;
+        if (needNewPage) {
+          pdf.addPage();
+          curY = margin;
+          needNewPage = false;
         }
+
+        if (curY + imgH > margin + usableH) {
+          pdf.addPage();
+          curY = margin;
+        }
+
+        pdf.addImage(item.canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, curY, contentW, imgH);
+        curY += imgH;
       }
     }
 
-    // 표지 (첫 페이지)
-    const coverImgW = contentW;
-    const coverImgH = (coverCanvas.height / coverCanvas.width) * coverImgW;
-    if (coverImgH <= contentH) {
-      pdf.addImage(coverCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, coverImgW, coverImgH);
-    } else {
-      pdf.addImage(coverCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, coverImgW, contentH);
-    }
-
-    // 카테고리 섹션들
-    sectionCanvases.forEach(canvas => addCanvasPages(canvas, true));
-
-    // 페이지 번호 추가
+    // 푸터 (한글 캔버스 렌더링)
     const totalPages = pdf.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(160);
-      pdf.text(`${i} / ${totalPages}`, pdfW - margin - 15, pdfH - 3);
+      const fCanvas = await _renderFooterCanvas('KETI 기술역량 대시보드', `${i} / ${totalPages}`, PAGE_W);
+      const fImgH = (fCanvas.height / fCanvas.width) * contentW;
+      pdf.addImage(fCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, pdfH - margin - fImgH, contentW, fImgH);
     }
 
     const filePrefix = tabId === 't-core' ? 'KETI_AI_핵심기술' : tabId === 't-base' ? 'KETI_AI_기반기술' : 'KETI_AI_융합기술';
@@ -2582,7 +2645,6 @@ async function downloadTrendPdf(tabId, sections, title) {
     console.error('Trend PDF 생성 오류:', err);
     alert('PDF 생성 중 오류가 발생했습니다. 콘솔(F12)을 확인하세요.');
   } finally {
-    const svgIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     if (btn) { btn.disabled = false; btn.innerHTML = svgIcon + ' PDF'; }
   }
 }
